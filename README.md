@@ -30,3 +30,7 @@ Aplicación de escritorio desarrollada en Python para administrar estudiantes, s
 ## Estado del proyecto
 
 Proyecto en fase de planificación y especificación.
+
+
+hola 
+dsd
