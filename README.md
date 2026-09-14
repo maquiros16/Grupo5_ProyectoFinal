@@ -22,15 +22,10 @@ Aplicación de escritorio desarrollada en Python para administrar estudiantes, s
 - Pruebas automatizadas
   
 ## Estructura del repositorio
-- `documentacion/`: informe final, manual de usuario y matriz de trazabilidad.
-- `solucion/`: código fuente y datos de la aplicación.
-- `pruebas/`: pruebas automatizadas, datos de prueba y resultados.
-- `evidencias/`: capturas y registros de las pruebas realizadas.
+- documentacion/: informe final, manual de usuario y matriz de trazabilidad.
+- solucion/: código fuente y datos de la aplicación.
+- pruebas/: pruebas automatizadas, datos de prueba y resultados.
+- evidencias/: capturas y registros de las pruebas realizadas.
 
 ## Estado del proyecto
-
 Proyecto en fase de planificación y especificación.
-
-
-hola 
-dsd
