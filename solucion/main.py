@@ -1,11 +1,19 @@
 import argparse
 from pathlib import Path
+import sys
 import tkinter as tk
 from tkinter import messagebox
 
-from .aplicacion import Aplicacion
-from .contratos import ErrorPersistencia
-from .persistencia import PersistenciaSQLite
+if __package__:
+    from .aplicacion import Aplicacion
+    from .contratos import ErrorPersistencia
+    from .persistencia import PersistenciaSQLite
+else:
+    # Permite utilizar el botón de ejecución de VS Code sobre este archivo.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from solucion.aplicacion import Aplicacion
+    from solucion.contratos import ErrorPersistencia
+    from solucion.persistencia import PersistenciaSQLite
 
 
 # Configura la persistencia e inicia el ciclo de la interfaz gráfica.
