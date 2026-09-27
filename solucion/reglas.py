@@ -1,4 +1,17 @@
-"""Motor de reglas de reservación (RN-01 a RN-11)."""
+"""Motor de reglas de reservación:
+
+Funciones puras: 
+- Reciben los datos ya consultados y la fecha/hora actual, no usan SQLite ni Tkinter. 
+- Cada regla rechaza con ErrorValidacion y un mensaje que puede mostrarse directamente a la persona usuaria.
+
+Uso desde otros módulos (creación, modificación y recurrencia):
+    solicitud = validar_reservacion(estudiante, sala, fecha, hora_inicio,
+                                    duracion, cantidad, reservas_sala,
+                                    reservas_estudiante, ahora, excluir_id)
+
+Para modificar una reservación se envía su identificador en excluir_id, así
+no choca consigo misma ni cuenta dos veces en el límite por estudiante.
+"""
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, time
