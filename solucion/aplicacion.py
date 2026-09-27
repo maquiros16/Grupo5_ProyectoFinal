@@ -3,7 +3,8 @@ from tkinter import messagebox, ttk
 
 from .cierre import CierreControlado
 from .contratos import ErrorPersistencia
-from .interfaz import VistaEstudiantes, VistaAuditoria, VistaReportes, VistaSalas
+from .interfaz import VistaEstudiantes, VistaAuditoria, VistaReportes, VistaSalas, VistaPanel, VistaReservacion
+from .reservaciones import ServicioReservaciones
 from .estudiantes import ServicioEstudiantes
 from .reportes import ServicioReportes
 from .salas import ServicioSalas
@@ -17,16 +18,19 @@ class Aplicacion(tk.Tk):
         self.title("Sistema de reservación de salas")
         self.geometry("1050x760")
         self.minsize(760, 620)
+        self.servicio_reservaciones = ServicioReservaciones(persistencia)
         self._crear_inicio()
         self.contenido = ttk.Frame(self)
         ttk.Button(self.contenido, text="Volver al inicio", command=self.volver).pack(anchor="e", padx=16, pady=8)
         self.estudiantes = VistaEstudiantes(self.contenido, ServicioEstudiantes(persistencia))
         self.salas = VistaSalas(self.contenido, ServicioSalas(persistencia))
         self.reportes = VistaReportes(self.contenido, ServicioReportes(persistencia))
+        self.reservaciones = VistaReservacion(self.contenido, self.servicio_reservaciones, al_cambiar=self.panel.actualizar)
         self.auditoria = VistaAuditoria(self.contenido, persistencia)
         self.cierre = CierreControlado(persistencia.cerrar, self.destroy)
         self.cierre.agregar(self.estudiantes.participante_cierre())
         self.cierre.agregar(self.salas.participante_cierre())
+        self.cierre.agregar(self.reservaciones.participante_cierre())
         self._crear_menu()
         self.protocol("WM_DELETE_WINDOW", self.salir)
         self.volver()
@@ -44,11 +48,16 @@ class Aplicacion(tk.Tk):
             self.inicio, text="Salas", command=self.abrir_salas
         ).pack(anchor="w", pady=8)
         ttk.Button(
+            self.inicio, text="Reservaciones", command=self.abrir_reservaciones
+        ).pack(anchor="w", pady=8)
+        ttk.Button(
             self.inicio, text="Reportes", command=self.abrir_reportes
         ).pack(anchor="w", pady=8)
         ttk.Button(
             self.inicio, text="Historial de acciones", command=self.abrir_auditoria
         ).pack(anchor="w", pady=8)
+        self.panel = VistaPanel(self.inicio, self.servicio_reservaciones)
+        self.panel.pack(fill="both", expand=True, pady=(8, 0))
 
     # Configura las opciones del menú de la aplicación.
     def _crear_menu(self):
@@ -73,6 +82,7 @@ class Aplicacion(tk.Tk):
         self.estudiantes.pack_forget()
         self.salas.pack_forget()
         self.reportes.pack_forget()
+        self.reservaciones.pack_forget()
         self.auditoria.pack_forget()
         self.contenido.pack(fill="both", expand=True)
         vista.actualizar()
@@ -90,6 +100,10 @@ class Aplicacion(tk.Tk):
     def abrir_reportes(self):
         self._mostrar_vista(self.reportes)
 
+    # Abre la creación de reservaciones y consulta de disponibilidad.
+    def abrir_reservaciones(self):
+        self._mostrar_vista(self.reservaciones)
+
     # Abre el historial de acciones.
     def abrir_auditoria(self):
         self._mostrar_vista(self.auditoria)
@@ -97,6 +111,7 @@ class Aplicacion(tk.Tk):
     # Regresa al inicio conservando los formularios pendientes.
     def volver(self):
         self.contenido.pack_forget()
+        self.panel.actualizar()
         self.inicio.pack(fill="both", expand=True)
 
     # Obtiene la decisión de guardar, descartar o cancelar la salida.

@@ -6,6 +6,7 @@ from .cierre import ParticipanteCierre
 from .contratos import ErrorPersistencia
 from .reportes import ENCABEZADOS, exportar_csv
 from .validaciones import ErrorValidacion
+from .reglas import (DURACIONES_PERMITIDAS, HORA_APERTURA, HORA_CIERRE, SALA_FUERA_DE_SERVICIO, formato_hora, hora_fin,)
 
 
 class TablaRegistros(ttk.Frame):
@@ -448,3 +449,248 @@ class VistaReportes(ttk.Frame):
             self.mensaje.set("No hay reservaciones en el rango indicado.")
         else:
             self.mensaje.set(f"{len(self.filas)} reservaciones en el reporte.")
+
+COLUMNAS_RESERVA = (
+    ("ID", 70), ("Carné", 120), ("Sala", 60), ("Fecha", 100),
+    ("Inicio", 70), ("Fin", 70), ("Personas", 80), ("Estado", 90),
+)
+
+
+# Convierte reservaciones en filas para TablaRegistros.
+def filas_reserva(reservas):
+    return (
+        (reserva.identificador, (reserva.identificador, reserva.carne, reserva.codigo_sala, reserva.fecha,
+                                 reserva.hora_inicio, hora_fin(reserva), reserva.cantidad_personas,
+                                 reserva.estado))
+        for reserva in reservas
+    )
+
+
+# Convierte el estado de una sala en un texto comprensible.
+def texto_estado_sala(estado):
+    return "fuera de servicio" if estado == SALA_FUERA_DE_SERVICIO else estado
+
+
+class VistaReservacion(ttk.Frame):
+    CAMPOS = ("carne", "sala", "fecha", "hora", "duracion", "cantidad")
+
+    # Inicializa las dependencias y el estado del componente.
+    def __init__(self, padre, servicio, al_cambiar=None):
+        super().__init__(padre, padding=12)
+        self.servicio = servicio
+        self.al_cambiar = al_cambiar or (lambda: None)
+        self.salas_por_texto = {}
+        self.variables = {campo: tk.StringVar(self) for campo in self.CAMPOS}
+        self.resultado = tk.StringVar(self)
+        self._crear_formulario()
+        self.actualizar()
+        self.limpiar()
+
+    # Construye los campos y acciones de la reservación.
+    def _crear_formulario(self):
+        formulario = ttk.LabelFrame(self, text="Datos de la reservación", padding=12)
+        formulario.pack(fill="x", pady=(0, 12))
+        etiquetas = ("Carné", "Sala", "Fecha (AAAA-MM-DD)", "Hora de inicio (HH:MM)",
+                     "Duración (horas)", "Cantidad de personas")
+        horas = [formato_hora(hora) for hora in range(HORA_APERTURA, HORA_CIERRE)]
+        self.campos = {}
+        for indice, (campo, etiqueta) in enumerate(zip(self.CAMPOS, etiquetas)):
+            ttk.Label(formulario, text=etiqueta).grid(row=indice, column=0, sticky="w", padx=(0, 12), pady=4)
+            if campo == "sala":
+                control = ttk.Combobox(formulario, textvariable=self.variables[campo], state="readonly", width=52)
+            elif campo == "hora":
+                control = ttk.Combobox(formulario, textvariable=self.variables[campo], values=horas, width=52)
+            elif campo == "duracion":
+                control = ttk.Combobox(
+                    formulario, textvariable=self.variables[campo],
+                    values=[str(valor) for valor in DURACIONES_PERMITIDAS], state="readonly", width=52,
+                )
+            else:
+                control = ttk.Entry(formulario, textvariable=self.variables[campo], width=55)
+            control.grid(row=indice, column=1, sticky="ew", pady=4)
+            self.campos[campo] = control
+        formulario.columnconfigure(1, weight=1)
+        botones = ttk.Frame(formulario)
+        botones.grid(row=len(self.CAMPOS), column=1, sticky="w", pady=(10, 0))
+        ttk.Button(botones, text="Crear reservación", command=self.guardar).pack(side="left")
+        ttk.Button(botones, text="Consultar disponibilidad", command=self.consultar).pack(side="left", padx=8)
+        ttk.Button(botones, text="Cancelar", command=self.cancelar).pack(side="left")
+        ttk.Label(self, textvariable=self.resultado, wraplength=900).pack(anchor="w", pady=8)
+
+    # Obtiene los valores actuales del formulario.
+    def valores(self):
+        return tuple(self.variables[campo].get() for campo in self.CAMPOS)
+
+    # Obtiene el código de la sala seleccionada.
+    def codigo_sala(self):
+        return self.salas_por_texto.get(self.variables["sala"].get(), "")
+
+    # Detecta diferencias respecto al formulario vacío.
+    def pendiente(self):
+        return self.valores() != self.valores_originales
+
+    # Restablece el formulario para una nueva reservación.
+    def limpiar(self):
+        for campo, variable in self.variables.items():
+            variable.set("1" if campo == "duracion" else "")
+        self.variables["fecha"].set(self.servicio.reloj().date().isoformat())
+        self.valores_originales = self.valores()
+
+    # Descarta el formulario después de obtener la confirmación necesaria.
+    def cancelar(self):
+        if not self.pendiente() or messagebox.askyesno(
+            "Descartar cambios", "¿Descartar los datos de la reservación sin guardar?", parent=self
+        ):
+            self.limpiar()
+            self.resultado.set("")
+
+    # Recarga la lista de salas conservando la selección.
+    def actualizar(self):
+        try:
+            salas = self.servicio.listar_salas()
+        except ErrorPersistencia as error:
+            messagebox.showerror("Salas no disponibles", str(error), parent=self)
+            return
+        seleccion = self.codigo_sala()
+        self.salas_por_texto = {
+            f"{sala.codigo} · {sala.nombre} · capacidad {sala.capacidad} · {texto_estado_sala(sala.estado)}": sala.codigo
+            for sala in salas
+        }
+        self.campos["sala"].configure(values=list(self.salas_por_texto))
+        texto = next((texto for texto, codigo in self.salas_por_texto.items() if codigo == seleccion), "")
+        self.variables["sala"].set(texto)
+
+    # Informa si el horario está libre sin guardar nada.
+    def consultar(self):
+        _, _, fecha, hora, duracion, _ = self.valores()
+        try:
+            resultado = self.servicio.consultar_disponibilidad(self.codigo_sala(), fecha, hora, duracion)
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo consultar", str(error), parent=self)
+            return None
+        horario = resultado.horario
+        if resultado.disponible:
+            self.resultado.set(
+                f"Disponible: sala {self.codigo_sala()} el {horario.fecha} de {horario.hora_inicio} a {horario.hora_fin}."
+            )
+        else:
+            choques = ", ".join(f"{r.identificador} ({r.hora_inicio}-{hora_fin(r)})" for r in resultado.conflictos)
+            self.resultado.set(f"No disponible: el horario choca con {choques}.")
+        return resultado
+
+    # Crea la reservación y muestra el ID asignado.
+    def guardar(self):
+        carne, _, fecha, hora, duracion, cantidad = self.valores()
+        try:
+            reservacion = self.servicio.crear(carne, self.codigo_sala(), fecha, hora, duracion, cantidad)
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo crear la reservación", str(error), parent=self)
+            return False
+        self.limpiar()
+        self.resultado.set(f"Última reservación creada: {reservacion.identificador}.")
+        self.al_cambiar()
+        messagebox.showinfo(
+            "Reservación creada",
+            f"La reservación se guardó con el ID {reservacion.identificador}.\n"
+            f"Sala {reservacion.codigo_sala}, {reservacion.fecha}, "
+            f"{reservacion.hora_inicio}-{hora_fin(reservacion)}.",
+            parent=self,
+        )
+        return True
+
+    # Expone las operaciones del formulario al coordinador de cierre.
+    def participante_cierre(self):
+        return ParticipanteCierre("Reservación", self.pendiente, self.guardar, self.limpiar)
+
+
+class VistaPanel(ttk.Frame):
+    ESTADOS = ("Todos", "activa", "cancelada")
+
+    # Inicializa las dependencias y el estado del componente.
+    def __init__(self, padre, servicio):
+        super().__init__(padre)
+        self.servicio = servicio
+        self.filtro_fecha = tk.StringVar(self)
+        self.filtro_sala = tk.StringVar(self, "Todas")
+        self.filtro_estado = tk.StringVar(self, "Todos")
+        self.mensajes = {}
+        pestanas = ttk.Notebook(self)
+        pestanas.pack(fill="both", expand=True)
+        self.tabla_hoy = self._crear_pestana(pestanas, "Reservaciones de hoy", "hoy", COLUMNAS_RESERVA)
+        self.tabla_proximas = self._crear_pestana(pestanas, "Próximas reservaciones", "proximas", COLUMNAS_RESERVA)
+        self.tabla_ocupacion = self._crear_pestana(pestanas, "Ocupación por sala", "ocupacion", (
+            ("Código", 70), ("Sala", 220), ("Estado", 130), ("Horas reservadas", 130), ("Ocupación", 110),
+        ))
+        busqueda = ttk.Frame(pestanas, padding=8)
+        pestanas.add(busqueda, text="Buscar con filtros")
+        self._crear_filtros(busqueda)
+        self.tabla_filtrada = TablaRegistros(busqueda, COLUMNAS_RESERVA)
+        self.tabla_filtrada.pack(fill="both", expand=True)
+        self.mensajes["filtradas"] = ttk.Label(busqueda)
+        self.mensajes["filtradas"].pack(anchor="w", pady=(6, 0))
+        self.actualizar()
+
+    # Crea una pestaña con su tabla y su mensaje de estado vacío.
+    def _crear_pestana(self, pestanas, titulo, clave, columnas):
+        marco = ttk.Frame(pestanas, padding=8)
+        pestanas.add(marco, text=titulo)
+        self.mensajes[clave] = ttk.Label(marco)
+        self.mensajes[clave].pack(anchor="w", pady=(0, 6))
+        tabla = TablaRegistros(marco, columnas)
+        tabla.pack(fill="both", expand=True)
+        return tabla
+
+    # Construye los filtros combinables por fecha, sala y estado.
+    def _crear_filtros(self, padre):
+        filtros = ttk.Frame(padre)
+        filtros.pack(fill="x", pady=(0, 8))
+        ttk.Label(filtros, text="Fecha (AAAA-MM-DD)").pack(side="left")
+        ttk.Entry(filtros, textvariable=self.filtro_fecha, width=12).pack(side="left", padx=(4, 12))
+        ttk.Label(filtros, text="Sala").pack(side="left")
+        self.combo_sala = ttk.Combobox(filtros, textvariable=self.filtro_sala, state="readonly", width=8)
+        self.combo_sala.pack(side="left", padx=(4, 12))
+        ttk.Label(filtros, text="Estado").pack(side="left")
+        ttk.Combobox(
+            filtros, textvariable=self.filtro_estado, values=self.ESTADOS, state="readonly", width=10
+        ).pack(side="left", padx=(4, 12))
+        ttk.Button(filtros, text="Aplicar filtros", command=self.actualizar).pack(side="left")
+        ttk.Button(filtros, text="Limpiar filtros", command=self.limpiar_filtros).pack(side="left", padx=8)
+
+    # Quita los filtros y recarga el panel.
+    def limpiar_filtros(self):
+        self.filtro_fecha.set("")
+        self.filtro_sala.set("Todas")
+        self.filtro_estado.set("Todos")
+        self.actualizar()
+
+    # Recarga todas las secciones del panel y sus estados vacíos.
+    def actualizar(self):
+        sala = "" if self.filtro_sala.get() == "Todas" else self.filtro_sala.get()
+        estado = "" if self.filtro_estado.get() == "Todos" else self.filtro_estado.get()
+        try:
+            panel = self.servicio.panel(self.filtro_fecha.get().strip(), sala, estado)
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("Panel no disponible", str(error), parent=self)
+            return None
+        self.combo_sala.configure(values=["Todas"] + [item.codigo for item in panel.ocupacion])
+        self.tabla_hoy.reemplazar(filas_reserva(panel.hoy))
+        self.tabla_proximas.reemplazar(filas_reserva(panel.proximas))
+        self.tabla_filtrada.reemplazar(filas_reserva(panel.filtradas))
+        self.tabla_ocupacion.reemplazar(
+            (item.codigo, (item.codigo, item.nombre, texto_estado_sala(item.estado), item.horas_reservadas,
+                           "No reservable" if item.estado == SALA_FUERA_DE_SERVICIO else f"{item.porcentaje} %"))
+            for item in panel.ocupacion
+        )
+        self.mensajes["hoy"].configure(
+            text=f"Reservaciones activas para hoy: {len(panel.hoy)}."
+            if panel.hoy else "No hay reservaciones activas para hoy.")
+        self.mensajes["proximas"].configure(
+            text=f"Próximas reservaciones activas: {len(panel.proximas)}."
+            if panel.proximas else "No hay próximas reservaciones activas.")
+        self.mensajes["ocupacion"].configure(
+            text=f"Ocupación del {panel.fecha_ocupacion} (horario de 08:00 a 20:00)."
+            if panel.ocupacion else "No hay salas registradas.")
+        self.mensajes["filtradas"].configure(
+            text=f"Reservaciones encontradas: {len(panel.filtradas)}."
+            if panel.filtradas else "No hay reservaciones que coincidan con los filtros.")
+        return panel

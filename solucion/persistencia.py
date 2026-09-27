@@ -149,6 +149,23 @@ class SesionSQLite:
              reservacion.fecha, reservacion.hora_inicio, reservacion.duracion,
              reservacion.cantidad_personas, reservacion.estado))
 
+    # Recupera reservaciones combinando los filtros que no estén vacíos.
+    def listar_reservaciones(self, fecha=None, codigo_sala=None, estado=None, carne=None):
+        condiciones, parametros = [], []
+        for condicion, valor in (
+            ("fecha = ?", fecha),
+            ("codigo_sala = ?", codigo_sala),
+            ("estado = ?", estado),
+            ("carne = ? COLLATE CARNE_CI", carne),
+        ):
+            if valor is not None:
+                condiciones.append(condicion)
+                parametros.append(valor)
+        filtro = " WHERE " + " AND ".join(condiciones) if condiciones else ""
+        return [Reservacion(*fila) for fila in self.conexion.execute(
+            "SELECT identificador,carne,codigo_sala,fecha,hora_inicio,duracion,cantidad_personas,estado "
+            f"FROM reservaciones{filtro} ORDER BY fecha, hora_inicio, identificador", parametros)]
+
     # Mayor cantidad de personas de una reservación activa que aún no comienza.
     def maxima_cantidad_activa_futura(self, codigo, fecha, hora):
         fila = self.conexion.execute(
