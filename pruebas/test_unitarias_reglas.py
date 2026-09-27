@@ -138,10 +138,38 @@ class ReglasTest(unittest.TestCase):
         ]
         reglas.validar_limite_estudiante(vigentes + otras, AHORA)
         en_curso = reserva("R0003", fecha="2026-09-28", inicio="10:00", duracion=2)  # Reserva presente.
-        with self.assertRaisesRegex(ErrorValidacion, "3 reservas"):
+        with self.assertRaisesRegex(ErrorValidacion, "3 unidades de reservación"):
             reglas.validar_limite_estudiante(vigentes + otras + [en_curso], AHORA)
         reglas.validar_limite_estudiante(vigentes + [en_curso], AHORA, excluir_id="R0003")
 
+    # Cuatro ocurrencias de una serie ocupan una sola unidad del límite.
+    def test_rn11_serie_cuenta_como_una_unidad(self):
+        ocurrencias = [
+            reserva(f"R000{n}", fecha=f"2026-10-0{n}")
+            for n in range(1, 5)
+        ]
+        series = {r.identificador: "S0001" for r in ocurrencias}
+
+        self.assertEqual(
+            reglas.contar_activas_vigentes(ocurrencias, AHORA, series_por_reserva=series),
+            1,
+        )
+
+        individuales = [
+            reserva("R0010", fecha="2026-10-10"),
+            reserva("R0011", fecha="2026-10-11"),
+        ]
+        self.assertEqual(
+            reglas.contar_activas_vigentes(
+                ocurrencias + individuales, AHORA, series_por_reserva=series
+            ),
+            3,
+        )
+        with self.assertRaisesRegex(ErrorValidacion, "3 unidades"):
+            reglas.validar_limite_estudiante(
+                ocurrencias + individuales, AHORA, series_por_reserva=series
+            )
+            
     # Comprueba el flujo completo y el orden de los rechazos.
     def test_validar_reservacion_completa(self):
         solicitud = reglas.validar_reservacion(

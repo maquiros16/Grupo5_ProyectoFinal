@@ -37,6 +37,11 @@ ESQUEMA = (
         cantidad_personas INTEGER NOT NULL CHECK (cantidad_personas > 0),
         estado TEXT NOT NULL
     )""",
+     """CREATE TABLE ocurrencias_serie (
+        id_serie TEXT NOT NULL,
+        identificador_reservacion TEXT NOT NULL PRIMARY KEY
+            REFERENCES reservaciones(identificador)
+    )""",
     """CREATE TABLE secuencia_reservaciones (
         ultimo INTEGER NOT NULL
     )""",
@@ -149,6 +154,76 @@ class SesionSQLite:
              reservacion.fecha, reservacion.hora_inicio, reservacion.duracion,
              reservacion.cantidad_personas, reservacion.estado))
 
+    # Vincula una reservación ya insertada con su serie en la transacción actual.
+    def insertar_ocurrencia_serie(self, id_serie, identificador_reservacion):
+        self.conexion.execute(
+            """INSERT INTO ocurrencias_serie(id_serie, identificador_reservacion)
+               VALUES (?, ?)""",
+            (id_serie, identificador_reservacion),
+        )
+
+    # Devuelve el ID de la serie, o None si la reservación es individual.
+    def obtener_serie_de_reservacion(self, identificador_reservacion):
+        fila = self.conexion.execute(
+            """SELECT id_serie FROM ocurrencias_serie
+               WHERE identificador_reservacion = ?""",
+            (identificador_reservacion,),
+        ).fetchone()
+        return fila[0] if fila else None
+
+    # Recupera las reservaciones de una serie en orden cronológico.
+    def listar_ocurrencias_serie(self, id_serie):
+        return [
+            Reservacion(*fila)
+            for fila in self.conexion.execute(
+                """SELECT r.identificador, r.carne, r.codigo_sala, r.fecha,
+                          r.hora_inicio, r.duracion, r.cantidad_personas, r.estado
+                   FROM reservaciones AS r
+                   JOIN ocurrencias_serie AS o
+                     ON o.identificador_reservacion = r.identificador
+                   WHERE o.id_serie = ?
+                   ORDER BY r.fecha, r.hora_inicio, r.identificador""",
+                (id_serie,),
+            )
+        ]
+
+    # Relaciona los ID de reservación del estudiante con sus ID de serie.
+    def series_de_estudiante(self, carne):
+        filas = self.conexion.execute(
+            """SELECT o.identificador_reservacion, o.id_serie
+               FROM ocurrencias_serie AS o
+               JOIN reservaciones AS r
+                 ON r.identificador = o.identificador_reservacion
+               WHERE r.carne = ? COLLATE CARNE_CI""",
+            (carne,),
+        )
+        return dict(filas)
+    
+    # Busca una reservación por su identificador.
+    def obtener_reservacion(self, identificador):
+        fila = self.conexion.execute(
+            """SELECT identificador, carne, codigo_sala, fecha, hora_inicio,
+                      duracion, cantidad_personas, estado
+               FROM reservaciones WHERE identificador = ?""",
+            (identificador,),
+        ).fetchone()
+        return Reservacion(*fila) if fila else None
+
+    # Actualiza una reservación sin cambiar su identificador ni el estudiante.
+    def actualizar_reservacion(self, reservacion):
+        cursor = self.conexion.execute(
+            """UPDATE reservaciones
+               SET codigo_sala = ?, fecha = ?, hora_inicio = ?,
+                   duracion = ?, cantidad_personas = ?, estado = ?
+               WHERE identificador = ?""",
+            (reservacion.codigo_sala, reservacion.fecha,
+             reservacion.hora_inicio, reservacion.duracion,
+             reservacion.cantidad_personas, reservacion.estado,
+             reservacion.identificador),
+        )
+        if cursor.rowcount != 1:
+            raise ErrorValidacion("ID: la reservación no existe.")
+
     # Recupera reservaciones combinando los filtros que no estén vacíos.
     def listar_reservaciones(self, fecha=None, codigo_sala=None, estado=None, carne=None):
         condiciones, parametros = [], []
@@ -227,6 +302,16 @@ class PersistenciaSQLite:
                     self.conexion.execute("INSERT INTO secuencia_reservaciones(ultimo) VALUES (0)")
                     if datos_iniciales:
                         self._insertar_datos_iniciales()
+            elif "ocurrencias_serie" not in tablas:
+                self._verificar_esquema(incluir_series=False)
+                with self.transaccion():
+                    self.conexion.execute(
+                        """CREATE TABLE ocurrencias_serie (
+                            id_serie TEXT NOT NULL,
+                            identificador_reservacion TEXT NOT NULL PRIMARY KEY
+                                REFERENCES reservaciones(identificador)
+                        )"""
+                    )
             self._verificar_esquema()
         except (sqlite3.Error, OSError, ErrorPersistencia, ErrorValidacion) as error:
             if self.conexion is not None:
@@ -247,8 +332,8 @@ class PersistenciaSQLite:
                 (codigo, nombre, capacidad, estado))
 
     # Comprueba las tablas requeridas y la unicidad de los carnés.
-    def _verificar_esquema(self):
-        for tabla, columnas in (
+    def _verificar_esquema(self, incluir_series=True):
+        tablas_requeridas = (
             ("estudiantes", ["carne", "nombre", "correo", "estado"]),
             ("auditoria", ["id", "fecha_hora", "accion", "entidad", "identificador"]),
             ("salas", ["codigo", "nombre", "capacidad", "estado"]),
@@ -257,7 +342,12 @@ class PersistenciaSQLite:
                 "duracion", "cantidad_personas", "estado",
             ]),
             ("secuencia_reservaciones", ["ultimo"]),
-        ):
+        )
+        if incluir_series:
+            tablas_requeridas += (
+                ("ocurrencias_serie", ["id_serie", "identificador_reservacion"]),
+            )
+        for tabla, columnas in tablas_requeridas:
             # Los nombres provienen de constantes, nunca de la interfaz.
             actuales = [fila[1] for fila in self.conexion.execute(f"PRAGMA table_info({tabla})")]
             if actuales != columnas:

@@ -67,6 +67,26 @@ class Sesion(Protocol):
     def siguiente_identificador_reservacion(self) -> str: ...
     # Inserta una reservación en la transacción actual.
     def insertar_reservacion(self, reservacion: Reservacion) -> None: ...
+     # Busca una reservación por su identificador.
+    # Asocia una reservación existente con una serie.
+    def insertar_ocurrencia_serie(
+        self, id_serie: str, identificador_reservacion: str
+    ) -> None: ...
+
+    # Devuelve la serie de una reservación individual, si existe.
+    def obtener_serie_de_reservacion(
+        self, identificador_reservacion: str
+    ) -> str | None: ...
+
+    # Recupera las reservaciones que integran una serie.
+    def listar_ocurrencias_serie(self, id_serie: str) -> list[Reservacion]: ...
+
+    # Relaciona las reservaciones de un estudiante con sus series.
+    def series_de_estudiante(self, carne: str) -> dict[str, str]: ...
+    
+    def obtener_reservacion(self, identificador: str) -> Reservacion | None: ...
+     # Actualiza una reservación existente conservando su identificador.
+    def actualizar_reservacion(self, reservacion: Reservacion) -> None: ...
     # Recupera reservaciones.
     def listar_reservaciones(self, fecha: str | None = None, codigo_sala: str | None = None,
                              estado: str | None = None,

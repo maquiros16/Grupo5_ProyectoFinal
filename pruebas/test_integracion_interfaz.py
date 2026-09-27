@@ -120,7 +120,17 @@ class InterfazTest(unittest.TestCase):
             for widget in self.app.inicio.winfo_children()
             if widget.winfo_class() == "TButton"
         }
-        self.assertEqual(set(botones), {"Estudiantes", "Salas", "Reservaciones", "Reportes", "Historial de acciones"})
+        self.assertEqual(
+            set(botones),
+            {
+                "Estudiantes",
+                "Salas",
+                "Reservaciones",
+                "Historial de reservaciones",
+                "Reportes",
+                "Historial de acciones",
+            },
+        )
         botones["Estudiantes"].invoke()
         self.app.update_idletasks()
         self.assertTrue(self.app.estudiantes.winfo_ismapped())

@@ -209,32 +209,63 @@ def validar_sin_conflictos(codigo_sala, horario, reservas, excluir_id=None):
         raise ErrorValidacion(f"La sala ya está reservada en ese horario: {detalle}.")
 
 
-# Cuenta las reservas activas del estudiante que aún no terminan.
-def contar_activas_vigentes(reservas_estudiante, ahora, excluir_id=None):
-    return sum(
-        1 for reserva in reservas_estudiante
+# Cuenta unidades activas vigentes: cada reserva individual o serie vale una.
+def contar_activas_vigentes(
+    reservas_estudiante, ahora, excluir_id=None, series_por_reserva=None
+):
+    series_por_reserva = series_por_reserva or {}
+
+    def unidad(reserva):
+        id_serie = series_por_reserva.get(reserva.identificador)
+        if id_serie is not None:
+            return ("serie", id_serie)
+        return ("individual", reserva.identificador)
+
+    unidad_excluida = None
+    if excluir_id is not None:
+        id_serie = series_por_reserva.get(excluir_id)
+        unidad_excluida = (
+            ("serie", id_serie)
+            if id_serie is not None
+            else ("individual", excluir_id)
+        )
+
+    return len({
+        unidad(reserva)
+        for reserva in reservas_estudiante
         if reserva.estado == RESERVA_ACTIVA
-        and reserva.identificador != excluir_id
-        and datetime.fromisoformat(f"{reserva.fecha}T{hora_fin(reserva)}") > ahora
+        and datetime.fromisoformat(
+            f"{reserva.fecha}T{hora_fin(reserva)}"
+        ) > ahora
+        and unidad(reserva) != unidad_excluida
+    })
+
+
+# Rechaza una unidad nueva si el estudiante ya tiene tres unidades activas.
+def validar_limite_estudiante(
+    reservas_estudiante, ahora, excluir_id=None, series_por_reserva=None
+):
+    cantidad = contar_activas_vigentes(
+        reservas_estudiante, ahora, excluir_id, series_por_reserva
     )
-
-
-# Rechaza la reserva si el estudiante ya tiene tres reservas activas vigentes.
-def validar_limite_estudiante(reservas_estudiante, ahora, excluir_id=None):
-    if contar_activas_vigentes(reservas_estudiante, ahora, excluir_id) >= MAXIMO_RESERVAS_ACTIVAS:
+    if cantidad >= MAXIMO_RESERVAS_ACTIVAS:
         raise ErrorValidacion(
-            f"El estudiante ya tiene {MAXIMO_RESERVAS_ACTIVAS} reservas activas presentes o futuras."
+            f"El estudiante ya tiene {MAXIMO_RESERVAS_ACTIVAS} "
+            "unidades de reservación activas presentes o futuras."
         )
 
 
 # Ejecuta todas las reglas de creación o modificación en un orden fijo.
 def validar_reservacion(estudiante, sala, fecha, hora_inicio, duracion, cantidad,
-                        reservas_sala, reservas_estudiante, ahora, excluir_id=None):
+                        reservas_sala, reservas_estudiante, ahora, excluir_id=None,
+                        series_por_reserva=None):
     validar_estudiante(estudiante)
     validar_sala(sala)
     horario = preparar_horario(fecha, hora_inicio, duracion, ahora)
     cantidad = validar_cantidad(cantidad, sala.capacidad)
-    validar_limite_estudiante(reservas_estudiante, ahora, excluir_id)
+    validar_limite_estudiante(
+        reservas_estudiante, ahora, excluir_id, series_por_reserva
+    )
     validar_sin_conflictos(sala.codigo, horario, reservas_sala, excluir_id)
     return Solicitud(horario.fecha, horario.hora_inicio, horario.hora_fin, horario.duracion, cantidad)
 

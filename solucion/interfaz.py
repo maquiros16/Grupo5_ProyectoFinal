@@ -481,6 +481,7 @@ class VistaReservacion(ttk.Frame):
         self.al_cambiar = al_cambiar or (lambda: None)
         self.salas_por_texto = {}
         self.variables = {campo: tk.StringVar(self) for campo in self.CAMPOS}
+        self.semanas = tk.StringVar(self, value="2")
         self.resultado = tk.StringVar(self)
         self._crear_formulario()
         self.actualizar()
@@ -509,12 +510,28 @@ class VistaReservacion(ttk.Frame):
                 control = ttk.Entry(formulario, textvariable=self.variables[campo], width=55)
             control.grid(row=indice, column=1, sticky="ew", pady=4)
             self.campos[campo] = control
+        ttk.Label(formulario, text="Semanas de recurrencia (2 a 8)").grid(
+            row=len(self.CAMPOS), column=0, sticky="w", padx=(0, 12), pady=4
+        )
+        ttk.Combobox(
+            formulario,
+            textvariable=self.semanas,
+            values=[str(n) for n in range(2, 9)],
+            state="readonly",
+            width=52,
+        ).grid(row=len(self.CAMPOS), column=1, sticky="ew", pady=4)
         formulario.columnconfigure(1, weight=1)
         botones = ttk.Frame(formulario)
-        botones.grid(row=len(self.CAMPOS), column=1, sticky="w", pady=(10, 0))
+        botones.grid(row=len(self.CAMPOS) + 1, column=1, sticky="w", pady=(10, 0))
+        ttk.Button(
+            botones, text="Previsualizar serie", command=self.previsualizar_serie
+        ).pack(side="left", padx=8)
         ttk.Button(botones, text="Crear reservación", command=self.guardar).pack(side="left")
         ttk.Button(botones, text="Consultar disponibilidad", command=self.consultar).pack(side="left", padx=8)
         ttk.Button(botones, text="Cancelar", command=self.cancelar).pack(side="left")
+        ttk.Button(
+            botones, text="Crear serie semanal", command=self.guardar_serie
+        ).pack(side="left", padx=8)
         ttk.Label(self, textvariable=self.resultado, wraplength=900).pack(anchor="w", pady=8)
 
     # Obtiene los valores actuales del formulario.
@@ -527,13 +544,17 @@ class VistaReservacion(ttk.Frame):
 
     # Detecta diferencias respecto al formulario vacío.
     def pendiente(self):
-        return self.valores() != self.valores_originales
+        return (
+            self.valores() != self.valores_originales
+            or self.semanas.get() != "2"
+        )
 
     # Restablece el formulario para una nueva reservación.
     def limpiar(self):
         for campo, variable in self.variables.items():
             variable.set("1" if campo == "duracion" else "")
         self.variables["fecha"].set(self.servicio.reloj().date().isoformat())
+        self.semanas.set("2")
         self.valores_originales = self.valores()
 
     # Descarta el formulario después de obtener la confirmación necesaria.
@@ -578,7 +599,69 @@ class VistaReservacion(ttk.Frame):
             self.resultado.set(f"No disponible: el horario choca con {choques}.")
         return resultado
 
+    def previsualizar_serie(self):
+        _, _, fecha, hora, duracion, _ = self.valores()
+        try:
+            resultados = self.servicio.previsualizar_recurrencia(
+                self.codigo_sala(), fecha, hora, duracion, self.semanas.get()
+            )
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo previsualizar", str(error), parent=self)
+            return
+
+        lineas = []
+        for fecha_semana, disponible, conflictos in resultados:
+            if disponible:
+                lineas.append(f"{fecha_semana}: disponible")
+            else:
+                detalle = ", ".join(conflictos) if isinstance(conflictos, list) else conflictos
+                lineas.append(f"{fecha_semana}: no disponible ({detalle})")
+
+        messagebox.showinfo("Previsualización de la serie", "\n".join(lineas), parent=self)
     # Crea la reservación y muestra el ID asignado.
+    
+    def guardar_serie(self):
+        carne, _, fecha, hora, duracion, cantidad = self.valores()
+
+        try:
+            resultados = self.servicio.previsualizar_recurrencia(
+                self.codigo_sala(), fecha, hora, duracion, self.semanas.get()
+            )
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo crear la serie", str(error), parent=self)
+            return False
+
+        if not all(disponible for _, disponible, _ in resultados):
+            messagebox.showwarning(
+                "Serie no disponible",
+                "Hay semanas con conflictos. Revise la previsualización.",
+                parent=self,
+            )
+            return False
+
+        fechas = "\n".join(fecha_semana for fecha_semana, _, _ in resultados)
+        if not messagebox.askyesno(
+            "Confirmar serie semanal",
+            f"¿Crear {len(resultados)} reservaciones en estas fechas?\n\n{fechas}",
+            parent=self,
+        ):
+            return False
+
+        try:
+            self.servicio.crear_serie(
+                carne, self.codigo_sala(), fecha, hora, duracion,
+                cantidad, self.semanas.get()
+            )
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo crear la serie", str(error), parent=self)
+            return False
+
+        self.limpiar()
+        self.resultado.set("Serie semanal creada correctamente.")
+        self.al_cambiar()
+        messagebox.showinfo("Serie creada", "Se guardaron todas las semanas.", parent=self)
+        return True
+
     def guardar(self):
         carne, _, fecha, hora, duracion, cantidad = self.valores()
         try:
@@ -602,7 +685,224 @@ class VistaReservacion(ttk.Frame):
     def participante_cierre(self):
         return ParticipanteCierre("Reservación", self.pendiente, self.guardar, self.limpiar)
 
+class VistaHistorialReservaciones(ttk.Frame):
+    # Construye la consulta completa y la búsqueda por carné.
+    def __init__(self, padre, servicio):
+        super().__init__(padre, padding=12)
+        self.servicio = servicio
+        self.carne = tk.StringVar(self)
+        self.mensaje = tk.StringVar(self)
+        self.id_edicion = tk.StringVar(self)
+        self.campos_edicion = {
+            campo: tk.StringVar(self)
+            for campo in ("sala", "fecha", "hora", "duracion", "cantidad")
+        }
 
+        controles = ttk.Frame(self)
+        controles.pack(fill="x", pady=(0, 12))
+        ttk.Label(controles, text="Carné del estudiante:").pack(side="left")
+        ttk.Entry(controles, textvariable=self.carne, width=20).pack(side="left", padx=8)
+        ttk.Button(controles, text="Buscar", command=self.buscar).pack(side="left")
+        ttk.Button(controles, text="Mostrar todas", command=self.mostrar_todas).pack(side="left", padx=8)
+        formulario = ttk.LabelFrame(self, text="Modificar reservación", padding=8)
+        formulario.pack(fill="x", pady=(0, 12))
+
+        etiquetas = (
+            ("sala", "Código de sala"),
+            ("fecha", "Fecha (AAAA-MM-DD)"),
+            ("hora", "Hora de inicio (HH:MM)"),
+            ("duracion", "Duración (horas)"),
+            ("cantidad", "Cantidad de personas"),
+        )
+        for fila, (campo, etiqueta) in enumerate(etiquetas):
+            ttk.Label(formulario, text=etiqueta).grid(
+                row=fila, column=0, sticky="w", padx=(0, 8), pady=2
+            )
+            ttk.Entry(
+                formulario, textvariable=self.campos_edicion[campo], width=24
+            ).grid(row=fila, column=1, sticky="w", pady=2)
+
+        botones_edicion = ttk.Frame(formulario)
+        botones_edicion.grid(row=5, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        ttk.Button(
+            botones_edicion, text="Cargar fila seleccionada",
+            command=self.cargar_edicion
+        ).pack(side="left")
+        ttk.Button(
+            botones_edicion, text="Guardar modificación",
+            command=self.guardar_edicion
+        ).pack(side="left", padx=8)
+
+        self.tabla = TablaRegistros(self, COLUMNAS_RESERVA)
+        self.tabla.pack(fill="both", expand=True)
+        ttk.Button(
+            self, text="Cancelar reservación seleccionada",
+            command=self.cancelar_seleccionada
+        ).pack(anchor="w", pady=(8, 0))
+        ttk.Button(
+            self, text="Cancelar semanas futuras de la serie",
+            command=self.cancelar_futuras_seleccionadas
+        ).pack(anchor="w", pady=(4, 0))
+        ttk.Label(self, textvariable=self.mensaje).pack(anchor="w", pady=8)
+
+    # Muestra el historial completo, incluidas las reservas canceladas.
+    def actualizar(self):
+        self.mostrar_todas()
+
+    def mostrar_todas(self):
+        try:
+            reservas = self.servicio.consultar()
+        except ErrorPersistencia as error:
+            messagebox.showerror("No se pudo consultar", str(error), parent=self)
+            return
+        self.carne.set("")
+        self.tabla.reemplazar(filas_reserva(reservas))
+        self.mensaje.set(f"{len(reservas)} reservaciones encontradas." if reservas
+                         else "No hay reservaciones registradas.")
+
+    # Filtra el historial por un estudiante existente.
+    def buscar(self):
+        try:
+            reservas = self.servicio.buscar_por_estudiante(self.carne.get())
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo buscar", str(error), parent=self)
+            return
+        self.tabla.reemplazar(filas_reserva(reservas))
+        self.mensaje.set(f"{len(reservas)} reservaciones encontradas." if reservas
+                         else "Este estudiante no tiene reservaciones.")
+
+    # Carga en el formulario los datos de la reservación seleccionada.
+    def cargar_edicion(self):
+        seleccion = self.tabla.registros.selection()
+        if not seleccion:
+            messagebox.showinfo(
+                "Modificar reservación",
+                "Seleccione una reservación de la tabla.",
+                parent=self,
+            )
+            return
+
+        try:
+            reserva = self.servicio.obtener_reservacion(seleccion[0])
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo cargar", str(error), parent=self)
+            return
+
+        if reserva.estado != "activa":
+            messagebox.showinfo(
+                "Modificar reservación",
+                "Solo se puede modificar una reservación activa.",
+                parent=self,
+            )
+            return
+
+        self.id_edicion.set(reserva.identificador)
+        self.campos_edicion["sala"].set(reserva.codigo_sala)
+        self.campos_edicion["fecha"].set(reserva.fecha)
+        self.campos_edicion["hora"].set(reserva.hora_inicio)
+        self.campos_edicion["duracion"].set(str(reserva.duracion))
+        self.campos_edicion["cantidad"].set(str(reserva.cantidad_personas))
+        self.mensaje.set(f"Editando la reservación {reserva.identificador}.")
+
+    # Guarda los cambios del formulario y actualiza el historial.
+    def guardar_edicion(self):
+        identificador = self.id_edicion.get()
+        if not identificador:
+            messagebox.showinfo(
+                "Modificar reservación",
+                "Primero seleccione una fila y pulse «Cargar fila seleccionada».",
+                parent=self,
+            )
+            return
+
+        datos = self.campos_edicion
+        try:
+            modificada = self.servicio.modificar_reservacion(
+                identificador,
+                datos["sala"].get(),
+                datos["fecha"].get(),
+                datos["hora"].get(),
+                datos["duracion"].get(),
+                datos["cantidad"].get(),
+            )
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo modificar", str(error), parent=self)
+            return
+
+        self.id_edicion.set("")
+        for variable in datos.values():
+            variable.set("")
+        self.mostrar_todas()
+        self.mensaje.set(f"Reservación {modificada.identificador} modificada.")
+        messagebox.showinfo(
+            "Reservación modificada",
+            f"Se guardaron los cambios de {modificada.identificador}.",
+            parent=self,
+        )
+
+    # Cancela la reservación seleccionada después de pedir confirmación.
+    def cancelar_seleccionada(self):
+        seleccion = self.tabla.registros.selection()
+        if not seleccion:
+            messagebox.showinfo(
+                "Cancelar reservación",
+                "Seleccione una reservación de la tabla.",
+                parent=self,
+            )
+            return
+
+        identificador = seleccion[0]
+        if not messagebox.askyesno(
+            "Confirmar cancelación",
+            f"¿Desea cancelar la reservación {identificador}?",
+            parent=self,
+        ):
+            return
+
+        try:
+            self.servicio.cancelar_reservacion(identificador)
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo cancelar", str(error), parent=self)
+            return
+
+        self.mostrar_todas()
+        messagebox.showinfo(
+            "Reservación cancelada",
+            f"La reservación {identificador} fue cancelada.",
+            parent=self,
+        )
+
+    def cancelar_futuras_seleccionadas(self):
+        seleccion = self.tabla.registros.selection()
+        if not seleccion:
+            messagebox.showinfo(
+                "Cancelar semanas futuras",
+                "Seleccione una reservación de la serie en la tabla.",
+                parent=self,
+            )
+            return
+
+        identificador = seleccion[0]
+        if not messagebox.askyesno(
+            "Confirmar cancelación",
+            f"¿Cancelar esta semana y las siguientes de la serie de {identificador}?",
+            parent=self,
+        ):
+            return
+
+        try:
+            self.servicio.cancelar_futuras_serie(identificador)
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo cancelar la serie", str(error), parent=self)
+            return
+
+        self.mostrar_todas()
+        messagebox.showinfo(
+            "Serie actualizada",
+            "Se cancelaron las reservaciones futuras correspondientes.",
+            parent=self,
+        )
+    
 class VistaPanel(ttk.Frame):
     ESTADOS = ("Todos", "activa", "cancelada")
 

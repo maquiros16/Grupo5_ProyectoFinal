@@ -3,12 +3,12 @@ from tkinter import messagebox, ttk
 
 from .cierre import CierreControlado
 from .contratos import ErrorPersistencia
-from .interfaz import VistaEstudiantes, VistaAuditoria, VistaReportes, VistaSalas, VistaPanel, VistaReservacion
 from .reservaciones import ServicioReservaciones
 from .estudiantes import ServicioEstudiantes
 from .reportes import ServicioReportes
 from .salas import ServicioSalas
 from .validaciones import ErrorValidacion
+from .interfaz import VistaEstudiantes, VistaAuditoria, VistaReportes, VistaSalas, VistaPanel, VistaReservacion, VistaHistorialReservaciones
 
 
 class Aplicacion(tk.Tk):
@@ -26,6 +26,7 @@ class Aplicacion(tk.Tk):
         self.salas = VistaSalas(self.contenido, ServicioSalas(persistencia))
         self.reportes = VistaReportes(self.contenido, ServicioReportes(persistencia))
         self.reservaciones = VistaReservacion(self.contenido, self.servicio_reservaciones, al_cambiar=self.panel.actualizar)
+        self.historial_reservaciones = VistaHistorialReservaciones(self.contenido, self.servicio_reservaciones)
         self.auditoria = VistaAuditoria(self.contenido, persistencia)
         self.cierre = CierreControlado(persistencia.cerrar, self.destroy)
         self.cierre.agregar(self.estudiantes.participante_cierre())
@@ -49,6 +50,10 @@ class Aplicacion(tk.Tk):
         ).pack(anchor="w", pady=8)
         ttk.Button(
             self.inicio, text="Reservaciones", command=self.abrir_reservaciones
+        ).pack(anchor="w", pady=8)
+        ttk.Button(
+            self.inicio, text="Historial de reservaciones",
+            command=self.abrir_historial_reservaciones
         ).pack(anchor="w", pady=8)
         ttk.Button(
             self.inicio, text="Reportes", command=self.abrir_reportes
@@ -83,6 +88,7 @@ class Aplicacion(tk.Tk):
         self.salas.pack_forget()
         self.reportes.pack_forget()
         self.reservaciones.pack_forget()
+        self.historial_reservaciones.pack_forget()
         self.auditoria.pack_forget()
         self.contenido.pack(fill="both", expand=True)
         vista.actualizar()
@@ -103,6 +109,10 @@ class Aplicacion(tk.Tk):
     # Abre la creación de reservaciones y consulta de disponibilidad.
     def abrir_reservaciones(self):
         self._mostrar_vista(self.reservaciones)
+
+    # Abre la consulta y búsqueda del historial de reservaciones.
+    def abrir_historial_reservaciones(self):
+        self._mostrar_vista(self.historial_reservaciones)
 
     # Abre el historial de acciones.
     def abrir_auditoria(self):

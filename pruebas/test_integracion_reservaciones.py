@@ -103,7 +103,7 @@ class ServicioReservacionesTest(unittest.TestCase):
     def test_rn11_maximo_tres_reservas(self):
         for fecha in ("2026-09-29", "2026-09-30", "2026-10-01"):
             self.servicio.crear(ACTIVO, "S01", fecha, "10:00", 1, 1)
-        with self.assertRaisesRegex(ErrorValidacion, "3 reservas"):
+        with self.assertRaisesRegex(ErrorValidacion, "3 unidades de reservación"):
             self.servicio.crear(ACTIVO, "S02", "2026-10-02", "10:00", 1, 1)
         self.cancelar("R0001")
         self.assertEqual(self.servicio.crear(ACTIVO, "S02", "2026-10-02", "10:00", 1, 1).identificador, "R0004")
@@ -145,6 +145,51 @@ class ServicioReservacionesTest(unittest.TestCase):
             self.persistencia.conexion.execute("SELECT ultimo FROM secuencia_reservaciones").fetchone(), antes)
         self.assertEqual(len(self.eventos_reserva()), 1)
 
+    def test_rf14_conflicto_no_guarda_serie_parcial(self):
+        ocupada = self.servicio.crear(
+            OTRO_ACTIVO, "S01", "2026-10-06", "10:00", 1, 1
+        )
+
+        with self.assertRaisesRegex(ErrorValidacion, "Semana 2026-10-06"):
+            self.servicio.crear_serie(
+                ACTIVO, "S01", "2026-09-29", "10:00", 1, 2, 3
+            )
+
+        self.assertEqual(self.reservas(), [ocupada])
+        with self.persistencia.lectura() as sesion:
+            self.assertEqual(sesion.listar_ocurrencias_serie("S0002"), [])
+
+        siguiente = self.servicio.crear(
+            ACTIVO, "S02", "2026-09-29", "10:00", 1, 1
+        )
+        self.assertEqual(siguiente.identificador, "R0002")
+
+    # Desde la segunda ocurrencia, cancela la segunda y la tercera.
+    def test_rf14_cancelar_futuras_conserva_anteriores(self):
+        id_serie, reservas = self.servicio.crear_serie(
+            ACTIVO, "S01", "2026-09-29", "10:00", 1, 2, 3
+        )
+
+        canceladas = self.servicio.cancelar_futuras_serie(
+            reservas[1].identificador
+        )
+
+        self.assertEqual(id_serie, "S0001")
+        self.assertEqual(
+            [r.identificador for r in canceladas],
+            ["R0002", "R0003"],
+        )
+        with self.persistencia.lectura() as sesion:
+            ocurrencias = sesion.listar_ocurrencias_serie(id_serie)
+        self.assertEqual(
+            [r.estado for r in ocurrencias],
+            ["activa", "cancelada", "cancelada"],
+        )
+        self.assertEqual(
+            self.eventos_reserva()[:2],
+            [("cancelacion", "R0003"), ("cancelacion", "R0002")],
+        )
+        
     # Comprueba reservas de hoy, próximas, ocupación y filtros combinados.
     def test_rf15_panel_y_filtros(self):
         vacio = self.servicio.panel()
