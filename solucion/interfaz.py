@@ -1,9 +1,10 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 
 from .auditoria import Auditoria
 from .cierre import ParticipanteCierre
 from .contratos import ErrorPersistencia
+from .reportes import ENCABEZADOS, exportar_csv
 from .validaciones import ErrorValidacion
 
 
@@ -226,3 +227,224 @@ class VistaAuditoria(ttk.Frame):
         self.mensaje.configure(
             text=f"{len(eventos)} acciones registradas." if eventos else "No hay acciones registradas."
         )
+
+
+class VistaSalas(ttk.Frame):
+    CAMPOS = ("codigo", "nombre", "capacidad", "estado")
+
+    # Inicializa las dependencias y el estado del componente.
+    def __init__(self, padre, servicio):
+        super().__init__(padre, padding=12)
+        self.servicio = servicio
+        self.codigo_seleccionado = None
+        self.salas_por_fila = {}
+        self.variables = {campo: tk.StringVar(self) for campo in self.CAMPOS}
+        self.mensaje = tk.StringVar(self)
+        self._crear_formulario()
+        self.tabla = TablaRegistros(self, (
+            ("Código", 110), ("Nombre", 260), ("Capacidad", 110), ("Estado", 160),
+        ))
+        self.tabla.pack(fill="both", expand=True)
+        self._crear_acciones()
+        self.limpiar()
+        self.actualizar()
+
+    # Construye los campos y acciones de edición de la sala.
+    def _crear_formulario(self):
+        formulario = ttk.LabelFrame(self, text="Datos de la sala", padding=12)
+        formulario.pack(fill="x", pady=(0, 12))
+        self.campos = {}
+        etiquetas = ("Código", "Nombre", "Capacidad", "Estado")
+        for indice, (campo, etiqueta) in enumerate(zip(self.CAMPOS, etiquetas)):
+            ttk.Label(formulario, text=etiqueta).grid(
+                row=indice, column=0, sticky="w", padx=(0, 12), pady=4
+            )
+            if campo == "estado":
+                control = ttk.Combobox(
+                    formulario, textvariable=self.variables[campo],
+                    values=("disponible", "fuera_de_servicio"), state="readonly",
+                )
+            else:
+                control = ttk.Entry(formulario, textvariable=self.variables[campo], width=55)
+            control.grid(row=indice, column=1, sticky="ew", pady=4)
+            self.campos[campo] = control
+        formulario.columnconfigure(1, weight=1)
+        botones = ttk.Frame(formulario)
+        botones.grid(row=4, column=1, sticky="w", pady=(10, 0))
+        self.boton_guardar = ttk.Button(botones, text="Registrar sala", command=self.guardar)
+        self.boton_guardar.pack(side="left")
+        ttk.Button(botones, text="Cancelar", command=self.cancelar).pack(side="left", padx=8)
+
+    # Construye los controles de consulta y selección de salas.
+    def _crear_acciones(self):
+        acciones = ttk.Frame(self)
+        acciones.pack(fill="x", pady=8)
+        ttk.Button(acciones, text="Editar seleccionado", command=self.editar).pack(side="left")
+        ttk.Button(acciones, text="Actualizar lista", command=self.actualizar).pack(side="left", padx=8)
+        ttk.Label(self, textvariable=self.mensaje).pack(anchor="w")
+
+    # Obtiene los valores actuales del formulario.
+    def valores(self):
+        return tuple(self.variables[campo].get() for campo in self.CAMPOS)
+
+    # Detecta diferencias respecto al último estado confirmado del formulario.
+    def pendiente(self):
+        return self.valores() != self.valores_originales
+
+    # Restablece el formulario para registrar una nueva sala.
+    def limpiar(self):
+        self.codigo_seleccionado = None
+        for campo, variable in self.variables.items():
+            variable.set("disponible" if campo == "estado" else "")
+        self.campos["codigo"].configure(state="normal")
+        self.boton_guardar.configure(text="Registrar sala")
+        self.valores_originales = self.valores()
+
+    # Solicita confirmación cuando se perderían datos pendientes.
+    def _confirmar_descarte(self):
+        return not self.pendiente() or messagebox.askyesno(
+            "Descartar cambios", "¿Descartar los datos del formulario sin guardar?", parent=self
+        )
+
+    # Descarta el formulario después de obtener la confirmación necesaria.
+    def cancelar(self):
+        if self._confirmar_descarte():
+            self.limpiar()
+
+    # Carga la sala seleccionada y bloquea la edición del código.
+    def editar(self):
+        seleccion = self.tabla.registros.selection()
+        if not seleccion:
+            messagebox.showinfo("Seleccionar sala", "Seleccione una sala en la lista.", parent=self)
+            return
+        if not self._confirmar_descarte():
+            return
+        sala = self.salas_por_fila[seleccion[0]]
+        self.codigo_seleccionado = sala.codigo
+        for campo in self.CAMPOS:
+            self.variables[campo].set(getattr(sala, campo))
+        self.campos["codigo"].configure(state="readonly")
+        self.boton_guardar.configure(text="Guardar modificación")
+        self.valores_originales = self.valores()
+
+    # Confirma y solicita el registro o la modificación de la sala.
+    def guardar(self):
+        codigo, nombre, capacidad, estado = self.valores()
+        try:
+            if self.codigo_seleccionado is None:
+                self.servicio.registrar(codigo, nombre, capacidad, estado)
+            else:
+                if not messagebox.askyesno(
+                    "Confirmar modificación",
+                    f"¿Guardar los cambios de {self.codigo_seleccionado}?\nEstado: {estado}",
+                    parent=self,
+                ):
+                    return False
+                self.servicio.modificar(self.codigo_seleccionado, nombre, capacidad, estado)
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo guardar", str(error), parent=self)
+            return False
+        self.limpiar()
+        self.actualizar()
+        messagebox.showinfo("Guardado", "Los datos de la sala se guardaron correctamente.", parent=self)
+        return True
+
+    # Recarga los registros y el estado vacío de la vista.
+    def actualizar(self):
+        try:
+            salas = self.servicio.consultar()
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("Consulta no disponible", str(error), parent=self)
+            return
+        self.salas_por_fila = {str(indice): sala for indice, sala in enumerate(salas)}
+        self.tabla.reemplazar(
+            (identificador, (sala.codigo, sala.nombre, sala.capacidad, sala.estado))
+            for identificador, sala in self.salas_por_fila.items()
+        )
+        self.mensaje.set(
+            f"{len(salas)} salas registradas." if salas else "No hay salas registradas."
+        )
+
+    # Expone las operaciones del formulario al coordinador de cierre.
+    def participante_cierre(self):
+        return ParticipanteCierre("Salas", self.pendiente, self.guardar, self.limpiar)
+
+
+class VistaReportes(ttk.Frame):
+    # Inicializa las dependencias y el estado del componente.
+    def __init__(self, padre, servicio):
+        super().__init__(padre, padding=12)
+        self.servicio = servicio
+        self.filas = []
+        self.generado = False
+        self.variables = {
+            "inicial": tk.StringVar(self),
+            "final": tk.StringVar(self),
+        }
+        self.mensaje = tk.StringVar(self)
+        self._crear_filtros()
+        anchos = (200, 180, 110, 120, 160, 110)
+        self.tabla = TablaRegistros(self, tuple(zip(ENCABEZADOS, anchos)))
+        self.tabla.pack(fill="both", expand=True)
+        ttk.Label(self, textvariable=self.mensaje).pack(anchor="w", pady=8)
+        self.actualizar()
+
+    # Construye el rango de fechas y las acciones de consulta y exportación.
+    def _crear_filtros(self):
+        filtros = ttk.LabelFrame(self, text="Rango del reporte", padding=12)
+        filtros.pack(fill="x", pady=(0, 12))
+        ttk.Label(filtros, text="Fecha inicial (AAAA-MM-DD)").grid(row=0, column=0, sticky="w", pady=4)
+        ttk.Entry(filtros, textvariable=self.variables["inicial"], width=20).grid(
+            row=0, column=1, sticky="w", padx=8, pady=4
+        )
+        ttk.Label(filtros, text="Fecha final (AAAA-MM-DD)").grid(row=1, column=0, sticky="w", pady=4)
+        ttk.Entry(filtros, textvariable=self.variables["final"], width=20).grid(
+            row=1, column=1, sticky="w", padx=8, pady=4
+        )
+        botones = ttk.Frame(filtros)
+        botones.grid(row=2, column=1, sticky="w", pady=(10, 0))
+        ttk.Button(botones, text="Generar reporte", command=self.generar).pack(side="left")
+        ttk.Button(botones, text="Exportar CSV", command=self.exportar).pack(side="left", padx=8)
+
+    # Consulta el rango y muestra el resultado sin escribir un archivo.
+    def generar(self):
+        try:
+            filas = self.servicio.generar(self.variables["inicial"].get(), self.variables["final"].get())
+        except (ErrorValidacion, ErrorPersistencia) as error:
+            messagebox.showerror("No se pudo generar", str(error), parent=self)
+            return
+        self.filas = filas
+        self.generado = True
+        self.actualizar()
+
+    # Guarda en CSV el reporte que ya se consultó.
+    def exportar(self):
+        if not self.generado:
+            messagebox.showinfo(
+                "Exportar reporte", "Genere el reporte antes de exportarlo.", parent=self
+            )
+            return
+        ruta = filedialog.asksaveasfilename(
+            parent=self, title="Exportar reporte", defaultextension=".csv",
+            filetypes=[("CSV", "*.csv")],
+        )
+        if not ruta:
+            return
+        try:
+            exportar_csv(self.filas, ruta)
+        except OSError as error:
+            messagebox.showerror("No se pudo exportar", str(error), parent=self)
+            return
+        messagebox.showinfo("Exportado", "El reporte se exportó correctamente.", parent=self)
+
+    # Muestra las filas del último reporte generado.
+    def actualizar(self):
+        self.tabla.reemplazar(
+            (str(indice), fila) for indice, fila in enumerate(self.filas)
+        )
+        if not self.generado:
+            self.mensaje.set("Indique la fecha inicial y la fecha final.")
+        elif not self.filas:
+            self.mensaje.set("No hay reservaciones en el rango indicado.")
+        else:
+            self.mensaje.set(f"{len(self.filas)} reservaciones en el reporte.")

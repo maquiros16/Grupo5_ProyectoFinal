@@ -1,4 +1,5 @@
 """Reglas del enunciado, independientes de Tkinter y SQLite."""
+from datetime import datetime
 import unicodedata
 
 
@@ -40,6 +41,49 @@ def validar_correo(valor):
     if valor.count("@") != 1 or "." not in valor.split("@")[-1]:
         raise ErrorValidacion("Correo: debe contener exactamente un @ y al menos un punto después.")
     return valor
+
+
+# Comprueba que el código de sala no quede vacío.
+def validar_codigo_sala(valor):
+    valor = normalizar_texto(valor, "Código")
+    if not valor:
+        raise ErrorValidacion("Código: indique el código de la sala.")
+    return valor
+
+
+# Comprueba que la capacidad sea un entero mayor que cero.
+def validar_capacidad(valor):
+    valor = normalizar_texto(valor, "Capacidad")
+    if not valor.isdigit() or int(valor) <= 0:
+        raise ErrorValidacion("Capacidad: indique un número entero mayor que cero.")
+    return int(valor)
+
+
+# Restringe el estado de la sala a disponible o fuera de servicio.
+def validar_estado_sala(valor):
+    valor = normalizar_texto(valor, "Estado")
+    if valor not in ("disponible", "fuera_de_servicio"):
+        raise ErrorValidacion("Estado: seleccione disponible o fuera_de_servicio.")
+    return valor
+
+
+# Comprueba una fecha obligatoria en formato AAAA-MM-DD.
+def validar_fecha(valor, campo):
+    valor = normalizar_texto(valor, campo)
+    try:
+        datetime.strptime(valor, "%Y-%m-%d")
+    except ValueError:
+        raise ErrorValidacion(f"{campo}: use el formato AAAA-MM-DD.") from None
+    return valor
+
+
+# Comprueba el rango obligatorio del reporte.
+def validar_rango_fechas(inicio, fin):
+    inicio = validar_fecha(inicio, "Fecha inicial")
+    fin = validar_fecha(fin, "Fecha final")
+    if fin < inicio:
+        raise ErrorValidacion("Fecha final: no puede ser anterior a la fecha inicial.")
+    return inicio, fin
 
 
 # Restringe el estado a activo o inactivo.

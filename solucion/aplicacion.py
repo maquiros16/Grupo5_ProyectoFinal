@@ -3,8 +3,10 @@ from tkinter import messagebox, ttk
 
 from .cierre import CierreControlado
 from .contratos import ErrorPersistencia
-from .interfaz import VistaEstudiantes, VistaAuditoria
+from .interfaz import VistaEstudiantes, VistaAuditoria, VistaReportes, VistaSalas
 from .estudiantes import ServicioEstudiantes
+from .reportes import ServicioReportes
+from .salas import ServicioSalas
 from .validaciones import ErrorValidacion
 
 
@@ -19,9 +21,12 @@ class Aplicacion(tk.Tk):
         self.contenido = ttk.Frame(self)
         ttk.Button(self.contenido, text="Volver al inicio", command=self.volver).pack(anchor="e", padx=16, pady=8)
         self.estudiantes = VistaEstudiantes(self.contenido, ServicioEstudiantes(persistencia))
+        self.salas = VistaSalas(self.contenido, ServicioSalas(persistencia))
+        self.reportes = VistaReportes(self.contenido, ServicioReportes(persistencia))
         self.auditoria = VistaAuditoria(self.contenido, persistencia)
         self.cierre = CierreControlado(persistencia.cerrar, self.destroy)
         self.cierre.agregar(self.estudiantes.participante_cierre())
+        self.cierre.agregar(self.salas.participante_cierre())
         self._crear_menu()
         self.protocol("WM_DELETE_WINDOW", self.salir)
         self.volver()
@@ -35,6 +40,12 @@ class Aplicacion(tk.Tk):
         ttk.Button(
             self.inicio, text="Estudiantes", command=self.abrir_estudiantes
         ).pack(anchor="w", pady=(20, 8))
+        ttk.Button(
+            self.inicio, text="Salas", command=self.abrir_salas
+        ).pack(anchor="w", pady=8)
+        ttk.Button(
+            self.inicio, text="Reportes", command=self.abrir_reportes
+        ).pack(anchor="w", pady=8)
         ttk.Button(
             self.inicio, text="Historial de acciones", command=self.abrir_auditoria
         ).pack(anchor="w", pady=8)
@@ -60,6 +71,8 @@ class Aplicacion(tk.Tk):
     def _mostrar_vista(self, vista):
         self.inicio.pack_forget()
         self.estudiantes.pack_forget()
+        self.salas.pack_forget()
+        self.reportes.pack_forget()
         self.auditoria.pack_forget()
         self.contenido.pack(fill="both", expand=True)
         vista.actualizar()
@@ -68,6 +81,14 @@ class Aplicacion(tk.Tk):
     # Abre la gestión de estudiantes.
     def abrir_estudiantes(self):
         self._mostrar_vista(self.estudiantes)
+
+    # Abre la gestión de salas.
+    def abrir_salas(self):
+        self._mostrar_vista(self.salas)
+
+    # Abre la consulta y exportación de reportes.
+    def abrir_reportes(self):
+        self._mostrar_vista(self.reportes)
 
     # Abre el historial de acciones.
     def abrir_auditoria(self):

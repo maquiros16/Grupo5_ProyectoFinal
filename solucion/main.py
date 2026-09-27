@@ -25,7 +25,7 @@ def main():
     )
     opciones = argumentos.parse_args()
     try:
-        persistencia = PersistenciaSQLite(opciones.db)
+        persistencia = PersistenciaSQLite(opciones.db, datos_iniciales=True)
     except ErrorPersistencia as error:
         ventana = tk.Tk()
         ventana.withdraw()

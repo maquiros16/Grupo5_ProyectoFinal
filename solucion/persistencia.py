@@ -1,9 +1,9 @@
-"""Persistencia transaccional de estudiantes y auditoría en SQLite."""
+"""Persistencia transaccional de estudiantes, salas, reservaciones y auditoría en SQLite."""
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-from .contratos import Estudiante, Evento, ErrorPersistencia
+from .contratos import Estudiante, Evento, Reservacion, Sala, ErrorPersistencia
 from .validaciones import clave_carne, ErrorValidacion
 
 
@@ -21,6 +21,41 @@ ESQUEMA = (
         entidad TEXT NOT NULL,
         identificador TEXT NOT NULL
     )""",
+    """CREATE TABLE salas (
+        codigo TEXT NOT NULL PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        capacidad INTEGER NOT NULL CHECK (capacidad > 0),
+        estado TEXT NOT NULL CHECK (estado IN ('disponible', 'fuera_de_servicio'))
+    )""",
+    """CREATE TABLE reservaciones (
+        identificador TEXT NOT NULL PRIMARY KEY,
+        carne TEXT NOT NULL REFERENCES estudiantes(carne),
+        codigo_sala TEXT NOT NULL REFERENCES salas(codigo),
+        fecha TEXT NOT NULL,
+        hora_inicio TEXT NOT NULL,
+        duracion INTEGER NOT NULL CHECK (duracion > 0),
+        cantidad_personas INTEGER NOT NULL CHECK (cantidad_personas > 0),
+        estado TEXT NOT NULL
+    )""",
+    """CREATE TABLE secuencia_reservaciones (
+        ultimo INTEGER NOT NULL
+    )""",
+)
+
+
+ESTUDIANTES_INICIALES = (
+    ("A001234567", "Andrea Solano", "andrea@universidad.ac.cr", "activo"),
+    ("B009876543", "Carlos Méndez", "carlos@universidad.ac.cr", "activo"),
+    ("C004567890", "Daniela Rojas", "daniela@universidad.ac.cr", "inactivo"),
+)
+
+
+SALAS_INICIALES = (
+    ("S01", "Sala Biblioteca 1", 4, "disponible"),
+    ("S02", "Sala Biblioteca 2", 6, "disponible"),
+    ("S03", "Laboratorio de estudio", 10, "disponible"),
+    ("S04", "Sala multimedia", 8, "fuera_de_servicio"),
+    ("S05", "Cubículo individual", 1, "disponible"),
 )
 
 
@@ -68,6 +103,80 @@ class SesionSQLite:
             "INSERT INTO auditoria(fecha_hora,accion,entidad,identificador) VALUES (?,?,?,?)",
             (fecha_hora, accion, entidad, identificador))
 
+    # Busca una sala por su código.
+    def obtener_sala(self, codigo):
+        fila = self.conexion.execute(
+            "SELECT codigo,nombre,capacidad,estado FROM salas WHERE codigo = ?",
+            (codigo.strip(),),
+        ).fetchone()
+        return Sala(*fila) if fila else None
+
+    # Recupera las salas ordenadas por código.
+    def listar_salas(self):
+        return [Sala(*fila) for fila in self.conexion.execute(
+            "SELECT codigo,nombre,capacidad,estado FROM salas ORDER BY codigo")]
+
+    # Inserta una sala en la transacción actual.
+    def insertar_sala(self, sala):
+        self.conexion.execute(
+            "INSERT INTO salas(codigo,nombre,capacidad,estado) VALUES (?,?,?,?)",
+            (sala.codigo, sala.nombre, sala.capacidad, sala.estado))
+
+    # Actualiza los datos editables sin modificar el código.
+    def actualizar_sala(self, sala):
+        cursor = self.conexion.execute(
+            "UPDATE salas SET nombre=?,capacidad=?,estado=? WHERE codigo=?",
+            (sala.nombre, sala.capacidad, sala.estado, sala.codigo))
+        if cursor.rowcount != 1:
+            raise ErrorValidacion("Código: la sala no existe.")
+
+    # Reserva el siguiente identificador. Cancelar una reservación no lo devuelve.
+    def siguiente_identificador_reservacion(self):
+        fila = self.conexion.execute("SELECT ultimo FROM secuencia_reservaciones").fetchone()
+        if fila is None:
+            raise ErrorPersistencia("No se pudo obtener el identificador de la reservación.")
+        siguiente = fila[0] + 1
+        self.conexion.execute("UPDATE secuencia_reservaciones SET ultimo=?", (siguiente,))
+        return f"R{siguiente:04d}"
+
+    # Inserta una reservación en la transacción actual.
+    def insertar_reservacion(self, reservacion):
+        self.conexion.execute(
+            """INSERT INTO reservaciones(
+                identificador,carne,codigo_sala,fecha,hora_inicio,duracion,cantidad_personas,estado)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            (reservacion.identificador, reservacion.carne, reservacion.codigo_sala,
+             reservacion.fecha, reservacion.hora_inicio, reservacion.duracion,
+             reservacion.cantidad_personas, reservacion.estado))
+
+    # Mayor cantidad de personas de una reservación activa que aún no comienza.
+    def maxima_cantidad_activa_futura(self, codigo, fecha, hora):
+        fila = self.conexion.execute(
+            """SELECT MAX(cantidad_personas) FROM reservaciones
+               WHERE codigo_sala = ? AND estado = 'activa'
+               AND (fecha > ? OR (fecha = ? AND hora_inicio > ?))""",
+            (codigo, fecha, fecha, hora),
+        ).fetchone()
+        return fila[0] or 0
+
+    # Recupera estudiante, sala, fecha, horario, cantidad y estado dentro del rango.
+    def listar_reporte(self, fecha_inicial, fecha_final):
+        filas = self.conexion.execute(
+            """SELECT estudiantes.nombre, salas.nombre, reservaciones.fecha,
+                      reservaciones.hora_inicio, reservaciones.duracion,
+                      reservaciones.cantidad_personas, reservaciones.estado
+               FROM reservaciones
+               JOIN estudiantes ON estudiantes.carne = reservaciones.carne
+               JOIN salas ON salas.codigo = reservaciones.codigo_sala
+               WHERE reservaciones.fecha >= ? AND reservaciones.fecha <= ?
+               ORDER BY reservaciones.fecha, reservaciones.hora_inicio, reservaciones.identificador""",
+            (fecha_inicial, fecha_final),
+        ).fetchall()
+        return [
+            (estudiante, sala, fecha, f"{hora} ({duracion} h)", cantidad, estado)
+            for estudiante, sala, fecha, hora, duracion, cantidad, estado in filas
+        ]
+
     # Consulta los eventos desde el más reciente.
     def listar_eventos(self):
         return [Evento(*fila) for fila in self.conexion.execute(
@@ -78,10 +187,11 @@ class PersistenciaSQLite:
     """Una conexión por aplicación, en el hilo de Tkinter.
 
     Inicializa solo si la BD está vacía. No migra ni altera esquemas ajenos.
+    Con datos_iniciales, esa primera creación también carga los registros del enunciado.
     Toda escritura se confirma o revierte antes de retornar al llamador.
     """
     # Inicializa las dependencias y el estado del componente.
-    def __init__(self, ruta):
+    def __init__(self, ruta, datos_iniciales=False):
         self._ocupada = False
         self._cerrada = False
         self.conexion = None
@@ -97,6 +207,9 @@ class PersistenciaSQLite:
                 with self.transaccion():
                     for sentencia in ESQUEMA:
                         self.conexion.execute(sentencia)
+                    self.conexion.execute("INSERT INTO secuencia_reservaciones(ultimo) VALUES (0)")
+                    if datos_iniciales:
+                        self._insertar_datos_iniciales()
             self._verificar_esquema()
         except (sqlite3.Error, OSError, ErrorPersistencia, ErrorValidacion) as error:
             if self.conexion is not None:
@@ -105,11 +218,28 @@ class PersistenciaSQLite:
                 "No se pudo abrir la base de datos con el esquema de este adaptador. "
                 "Revise la ruta y las instrucciones de integración.") from error
 
+    # Inserta los registros del enunciado durante la creación de la base.
+    def _insertar_datos_iniciales(self):
+        for carne, nombre, correo, estado in ESTUDIANTES_INICIALES:
+            self.conexion.execute(
+                "INSERT INTO estudiantes(carne,nombre,correo,estado) VALUES (?,?,?,?)",
+                (carne, nombre, correo, estado))
+        for codigo, nombre, capacidad, estado in SALAS_INICIALES:
+            self.conexion.execute(
+                "INSERT INTO salas(codigo,nombre,capacidad,estado) VALUES (?,?,?,?)",
+                (codigo, nombre, capacidad, estado))
+
     # Comprueba las tablas requeridas y la unicidad de los carnés.
     def _verificar_esquema(self):
         for tabla, columnas in (
             ("estudiantes", ["carne", "nombre", "correo", "estado"]),
             ("auditoria", ["id", "fecha_hora", "accion", "entidad", "identificador"]),
+            ("salas", ["codigo", "nombre", "capacidad", "estado"]),
+            ("reservaciones", [
+                "identificador", "carne", "codigo_sala", "fecha", "hora_inicio",
+                "duracion", "cantidad_personas", "estado",
+            ]),
+            ("secuencia_reservaciones", ["ultimo"]),
         ):
             # Los nombres provienen de constantes, nunca de la interfaz.
             actuales = [fila[1] for fila in self.conexion.execute(f"PRAGMA table_info({tabla})")]
@@ -118,6 +248,11 @@ class PersistenciaSQLite:
         carnes = [clave_carne(fila[0]) for fila in self.conexion.execute("SELECT carne FROM estudiantes")]
         if len(carnes) != len(set(carnes)):
             raise ErrorPersistencia("La base contiene carnés duplicados.")
+        codigos = [fila[0] for fila in self.conexion.execute("SELECT codigo FROM salas")]
+        if len(codigos) != len(set(codigos)):
+            raise ErrorPersistencia("La base contiene códigos de sala duplicados.")
+        if self.conexion.execute("SELECT COUNT(*) FROM secuencia_reservaciones").fetchone()[0] != 1:
+            raise ErrorPersistencia("Esquema incompatible; se requiere un adaptador.")
 
     # Delimita una transacción y revierte sus cambios ante excepciones.
     @contextmanager
