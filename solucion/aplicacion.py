@@ -32,6 +32,7 @@ class Aplicacion(tk.Tk):
         self.cierre.agregar(self.estudiantes.participante_cierre())
         self.cierre.agregar(self.salas.participante_cierre())
         self.cierre.agregar(self.reservaciones.participante_cierre())
+        self.cierre.agregar(self.historial_reservaciones.participante_cierre())
         self._crear_menu()
         self.protocol("WM_DELETE_WINDOW", self.salir)
         self.volver()
