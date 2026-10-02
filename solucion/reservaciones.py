@@ -310,6 +310,18 @@ class ServicioReservaciones:
             )
             series_por_reserva = sesion.series_de_estudiante(estudiante.carne)
 
+                        activas = reglas.contar_activas_vigentes(
+                reservas_estudiante, ahora
+            )
+            if activas + len(fechas) > reglas.MAXIMO_RESERVAS_ACTIVAS:
+                raise ErrorValidacion(
+                    f"La serie agrega {len(fechas)} reservaciones "
+                    f"y el estudiante ya tiene {activas} activas "
+                    "presentes o futuras. El máximo permitido es "
+                    f"{reglas.MAXIMO_RESERVAS_ACTIVAS}. "
+                    "No se guardó ninguna ocurrencia."
+                )
+
             solicitudes = []
             for fecha in fechas:
                 try:
