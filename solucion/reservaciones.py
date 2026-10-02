@@ -310,7 +310,7 @@ class ServicioReservaciones:
             )
             series_por_reserva = sesion.series_de_estudiante(estudiante.carne)
 
-                        activas = reglas.contar_activas_vigentes(
+            activas = reglas.contar_activas_vigentes(
                 reservas_estudiante, ahora
             )
             if activas + len(fechas) > reglas.MAXIMO_RESERVAS_ACTIVAS:
