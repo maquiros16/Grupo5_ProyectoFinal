@@ -71,9 +71,13 @@ def validar_estado_sala(valor):
 def validar_fecha(valor, campo):
     valor = normalizar_texto(valor, campo)
     try:
-        datetime.strptime(valor, "%Y-%m-%d")
+        fecha = datetime.strptime(valor, "%Y-%m-%d")
+        if valor != fecha.strftime("%Y-%m-%d"):
+            raise ValueError
     except ValueError:
-        raise ErrorValidacion(f"{campo}: use el formato AAAA-MM-DD.") from None
+        raise ErrorValidacion(
+            f"{campo}: use una fecha válida con formato AAAA-MM-DD."
+        ) from None
     return valor
 
 
