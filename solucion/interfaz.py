@@ -813,7 +813,7 @@ class VistaHistorialReservaciones(ttk.Frame):
                 "Primero seleccione una fila y pulse «Cargar fila seleccionada».",
                 parent=self,
             )
-            return
+            return False
 
         datos = self.campos_edicion
         try:
@@ -827,17 +827,52 @@ class VistaHistorialReservaciones(ttk.Frame):
             )
         except (ErrorValidacion, ErrorPersistencia) as error:
             messagebox.showerror("No se pudo modificar", str(error), parent=self)
-            return
+            return False
 
-        self.id_edicion.set("")
-        for variable in datos.values():
-            variable.set("")
+        self.descartar_edicion()
         self.mostrar_todas()
         self.mensaje.set(f"Reservación {modificada.identificador} modificada.")
         messagebox.showinfo(
             "Reservación modificada",
             f"Se guardaron los cambios de {modificada.identificador}.",
             parent=self,
+        )
+        return True
+
+    def edicion_pendiente(self):
+        identificador = self.id_edicion.get()
+        if not identificador:
+            return False
+
+        try:
+            reserva = self.servicio.obtener_reservacion(identificador)
+        except (ErrorValidacion, ErrorPersistencia):
+            return True
+
+        originales = (
+            reserva.codigo_sala,
+            reserva.fecha,
+            reserva.hora_inicio,
+            str(reserva.duracion),
+            str(reserva.cantidad_personas),
+        )
+        actuales = tuple(
+            self.campos_edicion[campo].get()
+            for campo in ("sala", "fecha", "hora", "duracion", "cantidad")
+        )
+        return actuales != originales
+
+    def descartar_edicion(self):
+        self.id_edicion.set("")
+        for variable in self.campos_edicion.values():
+            variable.set("")
+
+    def participante_cierre(self):
+        return ParticipanteCierre(
+            "Modificación de reservaciones",
+            self.edicion_pendiente,
+            self.guardar_edicion,
+            self.descartar_edicion,
         )
 
     # Cancela la reservación seleccionada después de pedir confirmación.
