@@ -36,7 +36,7 @@ Aplicación de escritorio en Python para administrar estudiantes, salas y reserv
 
 Se pueden crear series de 2 a 8 reservaciones separadas por siete días. La interfaz permite previsualizar las fechas y los conflictos antes de confirmar. Si alguna semana incumple las reglas, no se guarda ninguna reservación de la serie.
 
-Una serie con reservaciones activas presentes o futuras cuenta como una unidad para el límite de tres unidades por estudiante. Desde el historial se puede cancelar una reservación individual o cancelar la semana seleccionada y las siguientes de su serie.
+Cada ocurrencia de una serie cuenta como una reservación para el límite de tres reservaciones activas presentes o futuras por estudiante. Si las ocurrencias solicitadas, sumadas a las reservaciones vigentes del estudiante, superan ese límite, se rechaza la serie completa sin guardar ninguna ocurrencia.  Desde el historial se puede cancelar una reservación individual o cancelar la semana seleccionada y las siguientes ocurrencias futuras de su serie.
 
 ## Instalación y ejecución
 
