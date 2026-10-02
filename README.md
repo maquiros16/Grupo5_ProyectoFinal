@@ -38,6 +38,36 @@ Se pueden crear series de 2 a 8 reservaciones separadas por siete días. La inte
 
 Una serie con reservaciones activas presentes o futuras cuenta como una unidad para el límite de tres unidades por estudiante. Desde el historial se puede cancelar una reservación individual o cancelar la semana seleccionada y las siguientes de su serie.
 
+## Instalación y ejecución
+
+Se requiere Python 3.10 o superior con Tkinter disponible. La aplicación utiliza módulos de la biblioteca estándar de Python y no requiere paquetes externos de pip.
+
+1. Descargar el repositorio mediante Code → Download ZIP.
+2. Extraer el archivo ZIP.
+3. Abrir una terminal en la carpeta que contiene README.md, solucion y pruebas.
+4. Ejecutar:
+
+```bash
+python -m solucion.main
+```
+
+En Windows, si el comando anterior no funciona, utilizar:
+
+```powershell
+py -m solucion.main
+```
+
+En la primera ejecución se crea automáticamente la base de datos `datos/reservaciones.sqlite3`, con los estudiantes y las salas iniciales. Las siguientes ejecuciones conservan los datos registrados.
+
+## Restaurar los datos iniciales
+
+Este procedimiento elimina los cambios registrados y devuelve la aplicación a sus datos iniciales.
+
+1. Cerrar la aplicación.
+2. Guardar una copia de respaldo de `datos/reservaciones.sqlite3`.
+3. Eliminar el archivo original `datos/reservaciones.sqlite3`.
+4. Ejecutar nuevamente la aplicación. La base de datos se creará con los datos iniciales.
+   
 ## Pruebas
 
 Desde la raíz del proyecto, ejecutar:
