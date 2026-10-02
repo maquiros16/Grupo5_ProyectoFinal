@@ -142,8 +142,8 @@ class ReglasTest(unittest.TestCase):
             reglas.validar_limite_estudiante(vigentes + otras + [en_curso], AHORA)
         reglas.validar_limite_estudiante(vigentes + [en_curso], AHORA, excluir_id="R0003")
 
-    # Cuatro ocurrencias de una serie ocupan una sola unidad del límite.
-    def test_rn11_serie_cuenta_como_una_unidad(self):
+    # Cada ocurrencia de una serie cuenta como una reserva independiente.
+    def test_rn11_cada_ocurrencia_cuenta_por_separado(self):
         ocurrencias = [
             reserva(f"R000{n}", fecha=f"2026-10-0{n}")
             for n in range(1, 5)
@@ -151,8 +151,10 @@ class ReglasTest(unittest.TestCase):
         series = {r.identificador: "S0001" for r in ocurrencias}
 
         self.assertEqual(
-            reglas.contar_activas_vigentes(ocurrencias, AHORA, series_por_reserva=series),
-            1,
+            reglas.contar_activas_vigentes(
+                ocurrencias, AHORA, series_por_reserva=series
+            ),
+            4,
         )
 
         individuales = [
@@ -161,14 +163,27 @@ class ReglasTest(unittest.TestCase):
         ]
         self.assertEqual(
             reglas.contar_activas_vigentes(
-                ocurrencias + individuales, AHORA, series_por_reserva=series
+                ocurrencias + individuales,
+                AHORA,
+                series_por_reserva=series,
+            ),
+            6,
+        )
+
+        with self.assertRaisesRegex(ErrorValidacion, "3 reservaciones"):
+            reglas.validar_limite_estudiante(
+                ocurrencias, AHORA, series_por_reserva=series
+            )
+
+        self.assertEqual(
+            reglas.contar_activas_vigentes(
+                ocurrencias,
+                AHORA,
+                excluir_id="R0001",
+                series_por_reserva=series,
             ),
             3,
         )
-        with self.assertRaisesRegex(ErrorValidacion, "3 unidades"):
-            reglas.validar_limite_estudiante(
-                ocurrencias + individuales, AHORA, series_por_reserva=series
-            )
             
     # Comprueba el flujo completo y el orden de los rechazos.
     def test_validar_reservacion_completa(self):
