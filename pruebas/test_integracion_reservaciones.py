@@ -103,7 +103,7 @@ class ServicioReservacionesTest(unittest.TestCase):
     def test_rn11_maximo_tres_reservas(self):
         for fecha in ("2026-09-29", "2026-09-30", "2026-10-01"):
             self.servicio.crear(ACTIVO, "S01", fecha, "10:00", 1, 1)
-        with self.assertRaisesRegex(ErrorValidacion, "3 unidades de reservación"):
+        with self.assertRaisesRegex(ErrorValidacion, "3 reservaciones"):
             self.servicio.crear(ACTIVO, "S02", "2026-10-02", "10:00", 1, 1)
         self.cancelar("R0001")
         self.assertEqual(self.servicio.crear(ACTIVO, "S02", "2026-10-02", "10:00", 1, 1).identificador, "R0004")
