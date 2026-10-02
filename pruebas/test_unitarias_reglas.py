@@ -138,7 +138,7 @@ class ReglasTest(unittest.TestCase):
         ]
         reglas.validar_limite_estudiante(vigentes + otras, AHORA)
         en_curso = reserva("R0003", fecha="2026-09-28", inicio="10:00", duracion=2)  # Reserva presente.
-        with self.assertRaisesRegex(ErrorValidacion, "3 unidades de reservación"):
+        with self.assertRaisesRegex(ErrorValidacion, "3 reservaciones"):
             reglas.validar_limite_estudiante(vigentes + otras + [en_curso], AHORA)
         reglas.validar_limite_estudiante(vigentes + [en_curso], AHORA, excluir_id="R0003")
 
