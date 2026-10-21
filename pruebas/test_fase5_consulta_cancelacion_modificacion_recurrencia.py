@@ -1,4 +1,4 @@
-"""Pruebas de consulta, búsqueda, cancelación, modificación y recurrencia (casos de la Fase 4, Persona 4).
+"""Pruebas de consulta, búsqueda, cancelación, modificación y recurrencia
 
 Cubre RF-06, RF-07, RF-09, RF-13 y RF-14.
 Ejecución: python -m unittest pruebas.test_fase5_consulta_cancelacion_modificacion_recurrencia -v
