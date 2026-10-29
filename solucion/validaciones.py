@@ -51,11 +51,17 @@ def validar_codigo_sala(valor):
     return valor
 
 
+# Mayor entero que SQLite puede guardar en una columna INTEGER.
+CAPACIDAD_MAXIMA = 2**63 - 1
+
+
 # Comprueba que la capacidad sea un entero mayor que cero.
 def validar_capacidad(valor):
     valor = normalizar_texto(valor, "Capacidad")
-    if not valor.isdigit() or int(valor) <= 0:
+    if not (valor.isascii() and valor.isdigit()) or int(valor) <= 0:
         raise ErrorValidacion("Capacidad: indique un número entero mayor que cero.")
+    if int(valor) > CAPACIDAD_MAXIMA:
+        raise ErrorValidacion("Capacidad: el número indicado es demasiado grande.")
     return int(valor)
 
 
@@ -70,6 +76,8 @@ def validar_estado_sala(valor):
 # Comprueba una fecha obligatoria en formato AAAA-MM-DD.
 def validar_fecha(valor, campo):
     valor = normalizar_texto(valor, campo)
+    if not valor:
+        raise ErrorValidacion(f"{campo}: ingrese la fecha, es obligatoria.")
     try:
         fecha = datetime.strptime(valor, "%Y-%m-%d")
         if valor != fecha.strftime("%Y-%m-%d"):

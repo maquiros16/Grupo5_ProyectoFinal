@@ -37,6 +37,19 @@ class Reservacion:
 
 
 @dataclass(frozen=True)
+class FilaReporte:
+    carne: str
+    estudiante: str
+    sala: str
+    fecha: str
+    hora_inicio: str
+    hora_fin: str
+    duracion: int
+    cantidad_personas: int
+    estado: str
+
+
+@dataclass(frozen=True)
 class Evento:
     id: int
     fecha_hora: str
@@ -94,7 +107,7 @@ class Sesion(Protocol):
     # Mayor cantidad de personas de una reservación activa que aún no comienza.
     def maxima_cantidad_activa_futura(self, codigo: str, fecha: str, hora: str) -> int: ...
     # Recupera el reporte de reservaciones dentro del rango, inclusive.
-    def listar_reporte(self, fecha_inicial: str, fecha_final: str) -> list[tuple]: ...
+    def listar_reporte(self, fecha_inicial: str, fecha_final: str) -> list[FilaReporte]: ...
     # Agrega un evento a la transacción actual.
     def agregar_evento(self, fecha_hora: str, accion: str, entidad: str,
                       identificador: str) -> None: ...

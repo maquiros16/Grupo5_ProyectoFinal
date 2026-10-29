@@ -4,7 +4,7 @@ from tkinter import filedialog, messagebox, ttk
 from .auditoria import Auditoria
 from .cierre import ParticipanteCierre
 from .contratos import ErrorPersistencia
-from .reportes import ENCABEZADOS, exportar_csv
+from .reportes import ENCABEZADOS, exportar_csv, fila_pantalla
 from .validaciones import ErrorValidacion
 from .reglas import (DURACIONES_PERMITIDAS, HORA_APERTURA, HORA_CIERRE, SALA_FUERA_DE_SERVICIO, formato_hora, hora_fin,)
 
@@ -359,7 +359,7 @@ class VistaSalas(ttk.Frame):
             return
         self.salas_por_fila = {str(indice): sala for indice, sala in enumerate(salas)}
         self.tabla.reemplazar(
-            (identificador, (sala.codigo, sala.nombre, sala.capacidad, sala.estado))
+            (identificador, (sala.codigo, sala.nombre, sala.capacidad, texto_estado_sala(sala.estado)))
             for identificador, sala in self.salas_por_fila.items()
         )
         self.mensaje.set(
@@ -425,6 +425,13 @@ class VistaReportes(ttk.Frame):
                 "Exportar reporte", "Genere el reporte antes de exportarlo.", parent=self
             )
             return
+        if not self.filas:
+            messagebox.showinfo(
+                "Exportar reporte",
+                "No hay reservaciones en el rango indicado, por lo que no se generó el archivo.",
+                parent=self,
+            )
+            return
         ruta = filedialog.asksaveasfilename(
             parent=self, title="Exportar reporte", defaultextension=".csv",
             filetypes=[("CSV", "*.csv")],
@@ -441,7 +448,7 @@ class VistaReportes(ttk.Frame):
     # Muestra las filas del último reporte generado.
     def actualizar(self):
         self.tabla.reemplazar(
-            (str(indice), fila) for indice, fila in enumerate(self.filas)
+            (str(indice), fila_pantalla(fila)) for indice, fila in enumerate(self.filas)
         )
         if not self.generado:
             self.mensaje.set("Indique la fecha inicial y la fecha final.")

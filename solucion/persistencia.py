@@ -3,7 +3,7 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-from .contratos import Estudiante, Evento, Reservacion, Sala, ErrorPersistencia
+from .contratos import Estudiante, Evento, FilaReporte, Reservacion, Sala, ErrorPersistencia
 from .validaciones import clave_carne, ErrorValidacion
 
 
@@ -254,7 +254,7 @@ class SesionSQLite:
     # Recupera estudiante, sala, fecha, horario, cantidad y estado dentro del rango.
     def listar_reporte(self, fecha_inicial, fecha_final):
         filas = self.conexion.execute(
-            """SELECT estudiantes.nombre, salas.nombre, reservaciones.fecha,
+            """SELECT reservaciones.carne, estudiantes.nombre, salas.nombre, reservaciones.fecha,
                       reservaciones.hora_inicio, reservaciones.duracion,
                       reservaciones.cantidad_personas, reservaciones.estado
                FROM reservaciones
@@ -265,14 +265,21 @@ class SesionSQLite:
             (fecha_inicial, fecha_final),
         ).fetchall()
         return [
-            (estudiante, sala, fecha, f"{hora} ({duracion} h)", cantidad, estado)
-            for estudiante, sala, fecha, hora, duracion, cantidad, estado in filas
+            FilaReporte(carne, estudiante, sala, fecha, hora, _sumar_horas(hora, duracion),
+                        duracion, cantidad, estado)
+            for carne, estudiante, sala, fecha, hora, duracion, cantidad, estado in filas
         ]
 
     # Consulta los eventos desde el más reciente.
     def listar_eventos(self):
         return [Evento(*fila) for fila in self.conexion.execute(
             "SELECT id,fecha_hora,accion,entidad,identificador FROM auditoria ORDER BY id DESC")]
+
+
+# Calcula la hora de fin HH:MM a partir del inicio y la duración en horas.
+def _sumar_horas(hora, duracion):
+    minutos = int(hora[:2]) * 60 + int(hora[3:5]) + int(duracion) * 60
+    return f"{minutos // 60:02d}:{minutos % 60:02d}"
 
 
 class PersistenciaSQLite:

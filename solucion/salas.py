@@ -26,7 +26,9 @@ class ServicioSalas:
             validar_capacidad(capacidad), validar_estado_sala(estado),
         )
         with self.persistencia.transaccion() as sesion:
-            if sesion.obtener_sala(nueva.codigo):
+            # El código se compara sin distinguir mayúsculas y minúsculas (S01 = s01).
+            clave = nueva.codigo.casefold()
+            if any(sala.codigo.casefold() == clave for sala in sesion.listar_salas()):
                 raise ErrorValidacion("Código: ya existe una sala registrada con ese identificador.")
             sesion.insertar_sala(nueva)
             self.auditoria.registrar(sesion, "creacion", "sala", nueva.codigo)
