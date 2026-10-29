@@ -120,6 +120,8 @@ def leer_fecha(valor):
 # Valida el formato de 24 horas y que la hora sea completa.
 def validar_hora(valor):
     valor = normalizar_texto(valor, "Hora de inicio")
+    if not valor:
+        raise ErrorValidacion("Hora de inicio: indique la hora de inicio, es obligatoria.")
     if not _FORMATO_HORA.fullmatch(valor):
         raise ErrorValidacion("Hora de inicio: use el formato de 24 horas HH:MM.")
     horas, minutos = int(valor[:2]), int(valor[3:])
