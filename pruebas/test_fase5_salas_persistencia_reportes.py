@@ -16,7 +16,7 @@ SALAS_INICIALES = [
     ("S01", "Sala Biblioteca 1", "4", "disponible"),
     ("S02", "Sala Biblioteca 2", "6", "disponible"),
     ("S03", "Laboratorio de estudio", "10", "disponible"),
-    ("S04", "Sala multimedia", "8", "fuera_de_servicio"),
+    ("S04", "Sala multimedia", "8", "fuera de servicio"),  # Ajuste Fase 6 (BUG-01): texto visible
     ("S05", "Cubículo individual", "1", "disponible"),
 ]
 TRAZAS = ("Traceback", "file is not a database", "sqlite3", "Error:", "OverflowError", "ValueError")
@@ -79,7 +79,7 @@ class CP_RF01(BaseSalas):
             self.assertEqual(len({f[0] for f in salas}), 6)
             self.assertEqual(self.sala("S01")[2], "5")
             self.assertEqual(self.sala("S06"), ("S06", "Sala Posgrado", "12", "disponible"))
-            self.assertEqual(self.sala("S04")[3], "fuera_de_servicio")
+            self.assertEqual(self.sala("S04")[3], "fuera de servicio")  # Ajuste Fase 6 (BUG-01)
         self.assertEqual(len(self.filas(self.estudiantes().tabla)), 3)
 
     def test_CP_RF01_03_base_de_datos_danada(self):
@@ -137,9 +137,9 @@ class CP_RF04(BaseSalas):
         self.assertEqual(self.sala("S01")[3], "disponible")
         self.salas().limpiar()
         self.assertTrue(self.editar_sala("S01", confirmar=True, estado="fuera_de_servicio"))
-        self.assertEqual(self.filas(self.app.salas.tabla)[0], ("S01", "Sala Biblioteca 1", "4", "fuera_de_servicio"))
+        self.assertEqual(self.filas(self.app.salas.tabla)[0], ("S01", "Sala Biblioteca 1", "4", "fuera de servicio"))  # Ajuste Fase 6 (BUG-01)
         self.reiniciar()
-        self.assertEqual(self.sala("S01")[3], "fuera_de_servicio")
+        self.assertEqual(self.sala("S01")[3], "fuera de servicio")  # Ajuste Fase 6 (BUG-01)
         self.assertTrue(self.editar_sala("S01", estado="disponible"))
         self.assertEqual(self.sala("S01")[3], "disponible")
 

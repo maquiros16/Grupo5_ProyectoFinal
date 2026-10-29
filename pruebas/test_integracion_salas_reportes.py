@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from solucion.auditoria import Auditoria
-from solucion.contratos import ErrorPersistencia, Estudiante, Reservacion
+from solucion.contratos import ErrorPersistencia, Estudiante, FilaReporte, Reservacion
 from solucion.persistencia import ESTUDIANTES_INICIALES, PersistenciaSQLite, SALAS_INICIALES
-from solucion.reportes import ServicioReportes, exportar_csv
+from solucion.reportes import ENCABEZADOS_CSV, ServicioReportes, exportar_csv, fila_pantalla
 from solucion.salas import ServicioSalas
 from solucion.validaciones import ErrorValidacion
 
@@ -142,15 +142,20 @@ class SalasReportesTest(unittest.TestCase):
                 "2026-10-01", "08:00", 1, 1, "activa",
             ))
         filas = self.reportes.generar("2026-09-28", "2026-09-28")
-        self.assertEqual(filas, [(
-            "Carlos Méndez", "Sala de prueba", "2026-09-28", "08:00 (2 h)", 3, "activa",
+        self.assertEqual(filas, [FilaReporte(
+            "A001234567", "Carlos Méndez", "Sala de prueba", "2026-09-28", "08:00", "10:00", 2, 3, "activa",
         )])
+        self.assertEqual(fila_pantalla(filas[0]), (
+            "Carlos Méndez", "Sala de prueba", "2026-09-28", "08:00 (2 h)", 3, "activa",
+        ))
         destino = self.ruta.parent / "reporte.csv"
         exportar_csv(filas, destino)
         with destino.open(encoding="utf-8", newline="") as archivo:
             contenido = list(csv.reader(archivo))
-        self.assertEqual(contenido[0][0], "Estudiante")
-        self.assertIn("Méndez", contenido[1][0])
+        self.assertEqual(contenido[0], list(ENCABEZADOS_CSV))
+        self.assertEqual(contenido[1], [
+            "A001234567", "Carlos Méndez", "Sala de prueba", "2026-09-28", "08:00-10:00", "3", "activa",
+        ])
 
     # Arma el estudiante usado por el reporte.
     @staticmethod
