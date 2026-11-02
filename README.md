@@ -76,4 +76,4 @@ Desde la raíz del proyecto, ejecutar:
 py -3.13 -m unittest discover -s pruebas -v
 ```
 
-La última ejecución completó 86 pruebas correctamente.
+La última ejecución completó 156 pruebas correctamente.
