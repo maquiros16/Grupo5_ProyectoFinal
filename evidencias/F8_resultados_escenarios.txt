@@ -1,0 +1,84 @@
+F8-RES-01 - Flujo completo de creación de una reservación (RF-05, RF-08, RF-15, RF-17, RN-13)
+  Abrir la aplicación y revisar el panel principal ... ok
+  Consultar disponibilidad: S01, 2026-11-20, 10:00, 2 h ... ok
+  Crear reservación: A001234567, S01, 2026-11-20, 10:00, 2 h, 3 personas ... ok
+  Volver al inicio y revisar «Próximas reservaciones» ... ok
+  Abrir «Historial de acciones» ... ok
+  Cerrar con Archivo › Salir y volver a abrir la aplicación ... ok
+  Crear otra reservación tras el reinicio: B009876543, S02, 2026-11-20, 10:00, 2 h, 4 personas ... ok
+
+F8-PAN-01 - Reservación para hoy y ocupación por sala (RF-05, RF-15, RN-03)
+  Crear para hoy (2026-11-16) a las 10:00 (hora ya pasada) ... ok
+  Crear para hoy: B009876543, S03, 2026-11-16, 13:00, 2 h, 5 personas ... ok
+  Revisar la pestaña «Reservaciones de hoy» ... ok
+  Revisar la pestaña «Ocupación por sala» (fecha de hoy) ... ok
+
+F8-DIS-01 - Conflictos de horario y reserva consecutiva (RF-05, RF-08, RN-09 (criterio de superposición 6.1))
+  Disponibilidad S01 10:00–12:00 (conflicto total) ... ok
+  Disponibilidad S01 11:00–12:00 (conflicto parcial) ... ok
+  Disponibilidad S01 09:00–11:00 (conflicto parcial por el inicio) ... ok
+  Disponibilidad S01 08:00–10:00 (termina cuando inicia R0001) ... ok
+  Disponibilidad S01 12:00–13:00 (inicia cuando termina R0001) ... ok
+  Crear B009876543, S01, 2026-11-20, 11:00, 1 h ... ok
+  Crear consecutiva: B009876543, S01, 2026-11-20, 12:00, 1 h, 2 personas ... ok
+
+F8-RES-02 - Estudiante inexistente, inactivo o con carné inválido (RF-05, RN-01)
+  Crear con C004567890 (inactiva) ... ok
+  Crear con Z999999999 (no registrado) ... ok
+  Crear con carné «A00123» (6 caracteres) ... ok
+
+F8-DIS-02 - Sala fuera de servicio (RF-05, RF-08, RN-08)
+  Abrir la lista «Sala» del formulario ... ok
+  Consultar disponibilidad en S04, 2026-11-21, 10:00, 1 h ... ok
+  Crear A001234567, S04, 2026-11-21, 10:00, 1 h ... ok
+
+F8-RES-03 - Validación de fecha, hora, horario y duración (RF-05, RF-08, RN-02, RN-04, RN-05, RN-06)
+  Crear: Fecha pasada 2026-11-13 ... ok
+  Crear: Fecha inexistente 2026-02-30 ... ok
+  Crear: Formato de fecha 20/11/2026 ... ok
+  Crear: Hora no completa 10:30 ... ok
+  Crear: Hora inexistente 25:00 ... ok
+  Crear: Formato de hora 9:00 ... ok
+  Crear: Hora vacía ... ok
+  Crear: Antes de la apertura 07:00 ... ok
+  Crear: Termina después de las 20:00 (19:00, 2 h) ... ok
+  Límite inferior: disponibilidad S02 08:00, 1 h ... ok
+  Límite superior: disponibilidad S02 19:00, 1 h (termina 20:00) ... ok
+  Revisar la lista «Duración (horas)» ... ok
+
+F8-RES-04 - Cantidad de personas y capacidad (RF-05, RN-07)
+  Crear A001234567, S01, 2026-11-21, 09:00, 1 h, 5 personas (excede) ... ok
+  Crear A001234567, S01, 2026-11-21, 09:00, 1 h, 0 personas ... ok
+  Crear A001234567, S01, 2026-11-21, 09:00, 1 h, -1 personas ... ok
+  Crear A001234567, S01, 2026-11-21, 09:00, 1 h, 2.5 personas (decimal) ... ok
+  Crear A001234567, S01, 2026-11-21, 09:00, 1 h, cantidad vacía ... ok
+  Crear A001234567, S01, 2026-11-21, 09:00, 1 h, 4 personas (capacidad exacta) ... ok
+
+F8-RES-05 - Límite de tres reservaciones activas por estudiante (RF-05 (límite por estudiante), RN-11)
+  Crear cuarta reserva: B009876543, S05, 2026-11-21, 14:00, 1 h, 1 persona ... ok
+
+F8-PAN-02 - Panel: actualización y filtros combinados (RF-15 (con RF-09 para la cancelación))
+  En «Historial de reservaciones», cancelar R0004 ... ok
+  Volver al inicio y revisar «Próximas reservaciones» ... ok
+  Reintentar la reserva rechazada en RES-05 (B009876543, S05) ... ok
+  Revisar «Próximas reservaciones» sin recargar ... ok
+  Filtros: fecha «2026-11-20», sala «S01», estado «activa» ... ok
+  Filtros: fecha «2026-11-20», sala «S01», estado «cancelada» ... ok
+  Filtros: fecha «2026-11-20», sala «Todas», estado «Todos» ... ok
+  Filtros: fecha «—», sala «S05», estado «Todos» ... ok
+  Filtros: fecha «2026-12-31», sala «Todas», estado «Todos» ... ok
+  Filtro con fecha inexistente 2026-13-01 ... ok
+  Ocupación por sala con el filtro de fecha 2026-11-20 ... ok
+
+F8-RES-06 - Cancelar una reservación sin guardar y navegación (RF-05, RNF-04, RNF-05)
+  Llenar el formulario, pulsar «Volver al inicio» y regresar a «Reservaciones» ... ok
+  Pulsar «Cancelar» y confirmar con «Sí» ... ok
+
+F8-RES-07 - Integridad al final de la sesión (RF-05, RF-17, RNF-06, RN-13)
+  Contar reservaciones guardadas ... ok
+  Contar registros nuevos de auditoría ... ok
+
+----------------------------------------------------------------------
+Ejecutado: 2026-11-16 11:10 | Python 3.12.3 | Linux
+58/58 pasos aprobados en 11 escenarios
+OK

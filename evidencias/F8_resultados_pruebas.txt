@@ -1,0 +1,32 @@
+test_CP_RF05_01_creacion_exitosa_y_persistencia (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF05.test_CP_RF05_01_creacion_exitosa_y_persistencia) ... ok
+test_CP_RF05_02_estudiante_o_sala_no_validos (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF05.test_CP_RF05_02_estudiante_o_sala_no_validos) ... ok
+test_CP_RF05_03_validacion_de_fecha_y_hora (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF05.test_CP_RF05_03_validacion_de_fecha_y_hora) ... ok
+test_CP_RF05_04_duracion_capacidad_y_conflictos (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF05.test_CP_RF05_04_duracion_capacidad_y_conflictos) ... ok
+test_CP_RF08_01_disponibilidad_con_y_sin_conflictos (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF08.test_CP_RF08_01_disponibilidad_con_y_sin_conflictos) ... ok
+test_CP_RF08_02_sala_no_valida_y_campos_vacios (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF08.test_CP_RF08_02_sala_no_valida_y_campos_vacios) ... ok
+test_CP_RF08_03_validacion_de_fecha_hora_y_duracion (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF08.test_CP_RF08_03_validacion_de_fecha_hora_y_duracion) ... ok
+test_CP_RF08_04_la_consulta_no_modifica_la_informacion (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF08.test_CP_RF08_04_la_consulta_no_modifica_la_informacion) ... ok
+test_CP_RF15_01_reservaciones_del_dia_proximas_y_ocupacion (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF15.test_CP_RF15_01_reservaciones_del_dia_proximas_y_ocupacion) ... ok
+test_CP_RF15_02_actualizacion_despues_de_crear_modificar_y_cancelar (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF15.test_CP_RF15_02_actualizacion_despues_de_crear_modificar_y_cancelar) ... ok
+test_CP_RF15_03_filtros_por_fecha_sala_y_estado (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF15.test_CP_RF15_03_filtros_por_fecha_sala_y_estado) ... ok
+test_CP_RF15_04_estado_vacio_del_panel (pruebas.test_fase5_reservaciones_disponibilidad_panel.CP_RF15.test_CP_RF15_04_estado_vacio_del_panel) ... ok
+test_hora_fin (pruebas.test_unitarias_reglas.ReglasTest.test_hora_fin) ... ok
+test_rf08_evaluar_disponibilidad (pruebas.test_unitarias_reglas.ReglasTest.test_rf08_evaluar_disponibilidad) ... ok
+test_rn01_estudiante (pruebas.test_unitarias_reglas.ReglasTest.test_rn01_estudiante) ... ok
+test_rn02_fecha (pruebas.test_unitarias_reglas.ReglasTest.test_rn02_fecha) ... ok
+test_rn03_inicio_despues_de_la_hora_actual (pruebas.test_unitarias_reglas.ReglasTest.test_rn03_inicio_despues_de_la_hora_actual) ... ok
+test_rn04_hora (pruebas.test_unitarias_reglas.ReglasTest.test_rn04_hora) ... ok
+test_rn05_horario_limites (pruebas.test_unitarias_reglas.ReglasTest.test_rn05_horario_limites) ... ok
+test_rn06_duracion (pruebas.test_unitarias_reglas.ReglasTest.test_rn06_duracion) ... ok
+test_rn07_cantidad (pruebas.test_unitarias_reglas.ReglasTest.test_rn07_cantidad) ... ok
+test_rn08_sala (pruebas.test_unitarias_reglas.ReglasTest.test_rn08_sala) ... ok
+test_rn09_rn10_tabla_de_superposicion (pruebas.test_unitarias_reglas.ReglasTest.test_rn09_rn10_tabla_de_superposicion) ... ok
+test_rn09_rn12_conflictos_solo_activos_misma_sala_y_fecha (pruebas.test_unitarias_reglas.ReglasTest.test_rn09_rn12_conflictos_solo_activos_misma_sala_y_fecha) ... ok
+test_rn11_cada_ocurrencia_cuenta_por_separado (pruebas.test_unitarias_reglas.ReglasTest.test_rn11_cada_ocurrencia_cuenta_por_separado) ... ok
+test_rn11_limite_por_estudiante (pruebas.test_unitarias_reglas.ReglasTest.test_rn11_limite_por_estudiante) ... ok
+test_validar_reservacion_completa (pruebas.test_unitarias_reglas.ReglasTest.test_validar_reservacion_completa) ... ok
+
+----------------------------------------------------------------------
+Ran 27 tests in 1.659s
+
+OK
