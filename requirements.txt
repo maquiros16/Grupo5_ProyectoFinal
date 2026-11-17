@@ -1,0 +1,4 @@
+# Requiere Python 3.10 o superior.
+# No se requieren paquetes externos de pip.
+# Se utilizan módulos estándar como sqlite3, tkinter y unittest.
+# Tkinter requiere Tcl/Tk instalado en el sistema.
