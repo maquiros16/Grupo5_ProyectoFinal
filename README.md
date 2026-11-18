@@ -128,33 +128,6 @@ Las ejecuciones posteriores utilizan la base existente y conservan los cambios r
 
 Las reservaciones y el historial de auditoría comienzan vacíos. Los identificadores de reservación se generan automáticamente con el formato `R0001`, continúan después de reiniciar y no se reutilizan al cancelar una reservación.
 
-### Utilizar una base alternativa
-
-Para realizar una demostración con una base separada, ejecutar:
-
-```bash
-python -m solucion.main --db datos/demostracion.sqlite3
-```
-
-Esta opción permite trabajar sin modificar la base habitual. Si el archivo indicado no existe, se crea con los datos iniciales.
-
-## Restaurar los datos iniciales
-
-Este procedimiento devuelve la base seleccionada a sus datos iniciales. Los cambios registrados dejan de estar disponibles en esa base, por lo que se debe conservar un respaldo.
-
-1. Cerrar la aplicación.
-2. Copiar `datos/reservaciones.sqlite3` en una ubicación de respaldo.
-3. Eliminar el archivo original `datos/reservaciones.sqlite3`.
-4. Iniciar nuevamente la aplicación:
-
-   ```bash
-   python -m solucion.main
-   ```
-
-La aplicación crea una nueva base con los estudiantes y las salas iniciales, sin reservaciones ni registros de auditoría.
-
-Si se utiliza una base alternativa mediante `--db`, aplicar el procedimiento sobre ese archivo y volver a ejecutar la aplicación con la misma ruta.
-
 ## Reservaciones semanales
 
 Se pueden solicitar series de entre 2 y 8 ocurrencias separadas por siete días. La interfaz permite previsualizar las fechas y los conflictos antes de confirmar.
@@ -202,5 +175,3 @@ Al interpretar el resumen:
 - `skipped` identifica pruebas omitidas, que no deben contarse como aprobadas.
 
 El registro histórico `evidencias/F6_resultados_verificacion.txt` documenta una ejecución de 156 pruebas con resultado `OK`. Ese resultado corresponde a la ejecución registrada y no sustituye la verificación de cambios posteriores.
-
-Después de modificar el código, ejecutar nuevamente la suite y conservar el resultado junto con la fecha, el sistema operativo, la versión de Python y el commit evaluado.
