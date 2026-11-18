@@ -204,12 +204,3 @@ Al interpretar el resumen:
 El registro histórico `evidencias/F6_resultados_verificacion.txt` documenta una ejecución de 156 pruebas con resultado `OK`. Ese resultado corresponde a la ejecución registrada y no sustituye la verificación de cambios posteriores.
 
 Después de modificar el código, ejecutar nuevamente la suite y conservar el resultado junto con la fecha, el sistema operativo, la versión de Python y el commit evaluado.
-
-## Evidencias
-
-La carpeta `evidencias/` conserva capturas, archivos CSV y registros de ejecuciones de distintas fases del proyecto.
-
-Las evidencias de defectos y sus correcciones se mantienen para documentar el proceso de detección, corrección y verificación. Los resultados históricos deben interpretarse según la versión y el ambiente en que se obtuvieron.
-
-Los escenarios históricos contienen fechas fijas. Para repetirlos, seleccionar fechas y horas válidas respecto al momento de la nueva ejecución.
-
