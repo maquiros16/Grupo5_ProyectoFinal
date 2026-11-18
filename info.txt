@@ -1,0 +1,24 @@
+Institución: Tecnológico de Costa Rica
+Curso: TI3603 Calidad en Sistemas de Información
+Profesor: Néstor Morales Rodríguez
+Semestre: II semestre de 2026
+Grupo: 05
+Proyecto: Sistema de reservación de salas de estudio
+
+Integrantes:
+Emilio Alfaro Alfaro — 2024201356
+Allan Andrey Jiménez Badilla — 2024080466
+Melanie Parra Valverde — 2024239734
+Marian Agüero Quirós — 2023176889
+
+Versión entregada: 1.0.0
+Fecha de entrega: 20 de noviembre de 2026
+Estatus declarado: Excelente
+
+Repositorio:
+https://github.com/maquiros16/Grupo5_ProyectoFinal
+
+Verificación:
+156 pruebas automatizadas ejecutadas con resultado OK.
+Ambiente: Windows 10, Python 3.13.7.
+Registro: evidencias/resultados_actualizacion_csv.txt
