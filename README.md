@@ -212,3 +212,11 @@ Para usar una base distinta sin tocar la principal, se puede indicar otra ruta:
 ```bash
 python -m solucion.main --db ruta/otra_base.sqlite3
 ```
+
+## Historial de control de versiones
+
+El historial de cambios y las contribuciones del equipo se consultan en:
+
+https://github.com/maquiros16/Grupo5_ProyectoFinal/commits/
+
+El ZIP descargado contiene los archivos del proyecto, pero no el historial Git.
