@@ -190,3 +190,25 @@ Se comprobó el inicio de la aplicación y la presencia de los tres estudiantes 
 Después de integrar la carga desde CSV, se ejecutó la suite automatizada en Windows con Python 3.13.7. Las 156 pruebas finalizaron con resultado OK en 30,913 segundos.
 
 El registro completo se conserva en `evidencias/resultados_actualizacion_csv.txt`.
+
+## Restaurar los datos iniciales
+
+La aplicación conserva sus datos en `datos/reservaciones.sqlite3`. Para volver al estado inicial (3 estudiantes, 5 salas, sin reservaciones ni historial de acciones):
+
+1. Cerrar la aplicación.
+2. Eliminar el archivo `datos/reservaciones.sqlite3`. También se puede eliminar la carpeta `datos/` completa.
+3. Iniciar la aplicación de nuevo:
+
+   ```bash
+   python -m solucion.main
+   ```
+
+Al no encontrar la base, la aplicación la vuelve a crear y carga los datos de `solucion/datos_iniciales/estudiantes.csv` y `solucion/datos_iniciales/salas.csv`.
+
+**Advertencia:** esta operación elimina de forma permanente los estudiantes, salas, reservaciones y registros de auditoría que se hayan agregado. Si se desea conservarlos, copiar antes el archivo `reservaciones.sqlite3` a otra ubicación.
+
+Para usar una base distinta sin tocar la principal, se puede indicar otra ruta:
+
+```bash
+python -m solucion.main --db ruta/otra_base.sqlite3
+```
