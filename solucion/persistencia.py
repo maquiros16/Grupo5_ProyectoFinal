@@ -1,4 +1,5 @@
 """Persistencia transaccional de estudiantes, salas, reservaciones y auditoría en SQLite."""
+import csv
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -327,16 +328,58 @@ class PersistenciaSQLite:
                 "No se pudo abrir la base de datos con el esquema de este adaptador. "
                 "Revise la ruta y las instrucciones de integración.") from error
 
-    # Inserta los registros del enunciado durante la creación de la base.
+    
+    # Carga los archivos CSV durante la creación de la base.
     def _insertar_datos_iniciales(self):
-        for carne, nombre, correo, estado in ESTUDIANTES_INICIALES:
+        carpeta = Path(__file__).resolve().parent / "datos_iniciales"
+
+        try:
+            with (carpeta / "estudiantes.csv").open(
+                encoding="utf-8-sig", newline=""
+            ) as archivo:
+                lector = csv.DictReader(archivo)
+                if lector.fieldnames != ["carne", "nombre", "correo", "estado"]:
+                    raise ValueError("Encabezados de estudiantes incorrectos.")
+
+                estudiantes = [
+                    (fila["carne"], fila["nombre"], fila["correo"], fila["estado"])
+                    for fila in lector
+                ]
+
+            with (carpeta / "salas.csv").open(
+                encoding="utf-8-sig", newline=""
+            ) as archivo:
+                lector = csv.DictReader(archivo)
+                if lector.fieldnames != ["codigo", "nombre", "capacidad", "estado"]:
+                    raise ValueError("Encabezados de salas incorrectos.")
+
+                salas = [
+                    (
+                        fila["codigo"],
+                        fila["nombre"],
+                        int(fila["capacidad"]),
+                        fila["estado"],
+                    )
+                    for fila in lector
+                ]
+
+        except (OSError, UnicodeError, csv.Error, ValueError, KeyError, TypeError) as error:
+            raise ErrorPersistencia(
+                "No se pudieron cargar los archivos de datos iniciales. "
+                "Revise estudiantes.csv y salas.csv en solucion/datos_iniciales."
+            ) from error
+
+        for carne, nombre, correo, estado in estudiantes:
             self.conexion.execute(
                 "INSERT INTO estudiantes(carne,nombre,correo,estado) VALUES (?,?,?,?)",
-                (carne, nombre, correo, estado))
-        for codigo, nombre, capacidad, estado in SALAS_INICIALES:
+                (carne, nombre, correo, estado),
+            )
+
+        for codigo, nombre, capacidad, estado in salas:
             self.conexion.execute(
                 "INSERT INTO salas(codigo,nombre,capacidad,estado) VALUES (?,?,?,?)",
-                (codigo, nombre, capacidad, estado))
+                (codigo, nombre, capacidad, estado),
+            )
 
     # Comprueba las tablas requeridas y la unicidad de los carnés.
     def _verificar_esquema(self, incluir_series=True):
