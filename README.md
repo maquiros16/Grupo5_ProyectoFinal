@@ -213,20 +213,3 @@ Las evidencias de defectos y sus correcciones se mantienen para documentar el pr
 
 Los escenarios históricos contienen fechas fijas. Para repetirlos, seleccionar fechas y horas válidas respecto al momento de la nueva ejecución.
 
-## Control de versiones
-
-Repositorio del proyecto:
-
-https://github.com/maquiros16/Grupo5_ProyectoFinal
-
-El historial de commits permite consultar los cambios y las contribuciones del equipo. Cada actualización debe registrarse con un mensaje que describa el cambio realizado.
-
-La descarga mediante **Code → Download ZIP** incluye los archivos de la versión seleccionada, pero no contiene el historial Git. Este se consulta en GitHub o se obtiene al clonar el repositorio:
-
-```bash
-git clone https://github.com/maquiros16/Grupo5_ProyectoFinal.git
-cd Grupo5_ProyectoFinal
-git log
-```
-
-Para conservar el historial y las contribuciones, las actualizaciones se realizan en el repositorio existente.
