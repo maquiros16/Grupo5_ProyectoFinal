@@ -175,3 +175,18 @@ Al interpretar el resumen:
 - `skipped` identifica pruebas omitidas, que no deben contarse como aprobadas.
 
 El registro histórico `evidencias/F6_resultados_verificacion.txt` documenta una ejecución de 156 pruebas con resultado `OK`. Ese resultado corresponde a la ejecución registrada y no sustituye la verificación de cambios posteriores.
+
+## Verificación de la carga inicial desde CSV
+
+Los datos iniciales se distribuyen en:
+
+- `solucion/datos_iniciales/estudiantes.csv`
+- `solucion/datos_iniciales/salas.csv`
+
+La aplicación lee estos archivos al crear una base de datos vacía. Las bases existentes conservan su información y no vuelven a cargar los datos iniciales.
+
+Se comprobó el inicio de la aplicación y la presencia de los tres estudiantes y las cinco salas, con sus estados correspondientes.
+
+Después de integrar la carga desde CSV, se ejecutó la suite automatizada en Windows con Python 3.13.7. Las 156 pruebas finalizaron con resultado OK en 30,913 segundos.
+
+El registro completo se conserva en `evidencias/resultados_actualizacion_csv.txt`.
