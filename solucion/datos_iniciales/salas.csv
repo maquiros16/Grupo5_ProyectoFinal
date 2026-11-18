@@ -1,0 +1,6 @@
+codigo,nombre,capacidad,estado
+S01,Sala Biblioteca 1,4,disponible
+S02,Sala Biblioteca 2,6,disponible
+S03,Laboratorio de estudio,10,disponible
+S04,Sala multimedia,8,fuera_de_servicio
+S05,Cubículo individual,1,disponible
